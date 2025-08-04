@@ -7,6 +7,8 @@
 // General parameters for all motors
 #define DEVICENAME               "OpenCR_DXL_Port"  // For OpenCR
 #define BAUDRATE                 115200
+#define VOLTAGE_PIN 16                               // ADC0 on OpenCR
+
 #define TORQUE_ENABLE            1
 #define TORQUE_DISABLE           0
 
@@ -21,13 +23,23 @@
 #define OPENED                   1
 #define CLOSED                   0 
 
+// Mechanum drive working parameters
+#define WHEEL_SEPARATION_X       1
+#define WHEEL_SEPARATION_Y       0
+#define WHEEL_RADIUS             1
+
 // AX-12A motor parameters (Neck and Grabber) - Position control
 // https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
 
-#define AX_ADDR_TORQUE_ENABLE       24
-#define AX_ADDR_GOAL_POSITION       30
+#define AX_ADDR_TORQUE_ENABLE        24 // RW
+#define AX_ADDR_GOAL_POSITION        30 // RW
+#define AX_ADDR_MOVING_SPEED         32 // RW
+#define AX_ADDR_PRESENT_POSITION     36 // R
+#define AX_ADDR_PRESENT_SPEED        38 // R
+#define AX_ADDR_PRESENT_VOLTAGE      42 // R
+#define AX_ADDR_PRESENT_TEMPERATURE  43 // R
 
-#define AX_PROTOCOL_VERSION         1.0
+#define AX_PROTOCOL_VERSION          1.0
 
 #define NECK_MIN_POSITION_VALUE      200  
 #define NECK_MAX_POSITION_VALUE      860  
@@ -38,9 +50,13 @@
 // XM430-W210-T motor parameteres (Wheels) - Velocity control
 // https://emanual.robotis.com/docs/en/dxl/x/xm430-w210/
 
-#define XM_ADDR_TORQUE_ENABLE       64
-#define XM_ADDR_OPERATING_MODE      11
-#define XM_ADDR_GOAL_VELOCITY       104
+#define XM_ADDR_OPERATING_MODE      11  // RW 
+#define XM_ADDR_VELOCITY_LIMIT      44  // RW 
+#define XM_ADDR_TORQUE_ENABLE       64  // RW
+#define XM_ADDR_GOAL_VELOCITY       104 // RW
+#define XM_ADDR_PRESENT_VELOCITY    128 // R
+#define XM_ADDR_PRESENT_TEMPERATURE 128 // R
+
 
 #define XM_PROTOCOL_VERSION         2.0
 
@@ -64,14 +80,13 @@ void init_AllWheels();
 
 // Set functions
 void set_TorqueEnableAX(int ID);
+
 void set_NeckPosition(uint16_t position);
 void set_GrabberStatus(int grabber_status);
 
 void set_WheelVelocities(int32_t vBL, int32_t vBR, int32_t vFL, int32_t vFR);
 
 // Byte functions
-void writeByteAX(int ID, int ADDRESS, uint16_t DATA);
-void writeByteXM(int ID, int ADDRESS, uint16_t DATA);
-void writeByteXM_int32(int ID, int ADDRESS, int32_t DATA);
+void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA);
 
 #endif

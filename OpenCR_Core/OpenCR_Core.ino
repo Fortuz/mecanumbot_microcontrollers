@@ -1,6 +1,8 @@
 // This file contains the main functionalities for the Mecanumbot
 // Made by Balázs Nagy (2025)
 
+// Test 
+
 // Includes
 #include "MotorUtils.h"
 #include <RC100.h>
@@ -10,9 +12,9 @@ RC100 rc;
 int RcData = 0;
 
 // Movement constants
-int32_t lin_x = 0;
-int32_t lin_y = 0;
-int32_t ang_z = 0.0;
+int32_t goal_linear_x_velocity = 0;
+int32_t goal_linear_y_velocity = 0;
+int32_t goal_angular_velocity = 0.0;
 
 // Position targets for grabber and neck
 int grabber_L_pos = 512;
@@ -40,17 +42,17 @@ void loop() {
   // Read the Controller data
   if (rc.available()) {
     uint16_t RcData = rc.readData();
-    lin_x = 0;
-    lin_y = 0;
-    ang_z = 0.0;
+    goal_linear_x_velocity = 0;
+    goal_linear_y_velocity = 0;
+    goal_angular_velocity = 0.0;
 
     // Movements
-    if (RcData & RC100_BTN_U)    lin_x = 200;
-    if (RcData & RC100_BTN_D)    lin_x = -200;
-    if (RcData & RC100_BTN_2)    lin_y = -200;
-    if (RcData & RC100_BTN_4)    lin_y = 200;
-    if (RcData & RC100_BTN_6)    ang_z = 100;
-    if (RcData & RC100_BTN_5)    ang_z = -100;
+    if (RcData & RC100_BTN_U)    goal_linear_x_velocity =  200;
+    if (RcData & RC100_BTN_D)    goal_linear_x_velocity = -200;
+    if (RcData & RC100_BTN_2)    goal_linear_y_velocity = -200;
+    if (RcData & RC100_BTN_4)    goal_linear_y_velocity =  200;
+    if (RcData & RC100_BTN_6)    goal_angular_velocity  =  100;
+    if (RcData & RC100_BTN_5)    goal_angular_velocity  = -100;
 
     // Grabber control
     if (RcData & RC100_BTN_R) grabber_status = CLOSED;   
@@ -61,13 +63,20 @@ void loop() {
     if (RcData & RC100_BTN_3) neck_pos = 700; 
   }
 
-  // Set Mecanum drive velocity parameters to each wheel (geometry should be involved)
-  int32_t vFL = lin_x + lin_y - ang_z;
-  int32_t vFR = lin_x - lin_y + ang_z;
-  int32_t vBL = lin_x - lin_y - ang_z;
-  int32_t vBR = lin_x + lin_y + ang_z;
-  set_WheelVelocities(vBL, vBR, vFL, vFR);
+  // Set Mecanum drive velocity parameters to each wheel
+  int32_t velocity_BL = (1/WHEEL_RADIUS) * (goal_linear_x_velocity - goal_linear_y_velocity - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  int32_t velocity_BR = (1/WHEEL_RADIUS) * (goal_linear_x_velocity + goal_linear_y_velocity + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  int32_t velocity_FL = (1/WHEEL_RADIUS) * (goal_linear_x_velocity + goal_linear_y_velocity - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  int32_t velocity_FR = (1/WHEEL_RADIUS) * (goal_linear_x_velocity - goal_linear_y_velocity + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+
+  set_WheelVelocities(velocity_BL, velocity_BR, velocity_FL, velocity_FR);
 
   set_NeckPosition(neck_pos);
   set_GrabberStatus(grabber_status);
+
+  // Read Voltage
+  int adc_value = analogRead(BDPIN_BAT_PWR_ADC);
+  float vol_value = map(adc_value, 0, 1023, 0, 330*57/10);
+  vol_value = vol_value/100;
+
 }

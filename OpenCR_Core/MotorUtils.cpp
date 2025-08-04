@@ -14,8 +14,8 @@ void init_Neck(){
 void init_Grabber(){
   set_TorqueEnableAX(ID_GRABBER_L);
   set_TorqueEnableAX(ID_GRABBER_R);
-  writeByteAX(ID_GRABBER_R, AX_ADDR_GOAL_POSITION, GRABBER_FRONT_POSITION_VALUE); 
-  writeByteAX(ID_GRABBER_L, AX_ADDR_GOAL_POSITION, GRABBER_FRONT_POSITION_VALUE);
+  writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_GOAL_POSITION, GRABBER_FRONT_POSITION_VALUE); 
+  writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_GOAL_POSITION, GRABBER_FRONT_POSITION_VALUE);
 }
 
 void init_Dynamixel(const char* device_name, uint32_t baudrate) {
@@ -45,65 +45,40 @@ void init_AllWheels() {
 }
 
 void init_Wheel(int ID) {
-  writeByteXM(ID, XM_ADDR_TORQUE_ENABLE, TORQUE_DISABLE);
-  writeByteXM(ID, XM_ADDR_OPERATING_MODE, XM_VELOCITY_MODE);
-  writeByteXM(ID, XM_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
+  writeByte(packetHandlerXM, ID, XM_ADDR_TORQUE_ENABLE, TORQUE_DISABLE);
+  writeByte(packetHandlerXM, ID, XM_ADDR_OPERATING_MODE, XM_VELOCITY_MODE);
+  writeByte(packetHandlerXM, ID, XM_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
 }
 
 void set_TorqueEnableAX(int ID) {
-  writeByteAX(ID, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
+  writeByte(packetHandlerAX, ID, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
 }
 
 void set_NeckPosition(uint16_t position) {
-  writeByteAX(ID_NECK, AX_ADDR_GOAL_POSITION, position);
+  writeByte(packetHandlerAX, ID_NECK, AX_ADDR_GOAL_POSITION, position);
 }
 
 void set_GrabberStatus(int grabber_status) {
   if (grabber_status == CLOSED) {
-    writeByteAX(ID_GRABBER_R, AX_ADDR_GOAL_POSITION, 360); 
-    writeByteAX(ID_GRABBER_L, AX_ADDR_GOAL_POSITION, 655); 
+    writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_GOAL_POSITION, 360); 
+    writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_GOAL_POSITION, 655); 
   } else if (grabber_status == OPENED) {
-    writeByteAX(ID_GRABBER_L, AX_ADDR_GOAL_POSITION, 360); 
-    writeByteAX(ID_GRABBER_R, AX_ADDR_GOAL_POSITION, 655); 
+    writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_GOAL_POSITION, 360); 
+    writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_GOAL_POSITION, 655); 
     }
 }
 
-void writeByteAX(int ID, int ADDRESS, uint16_t DATA) { 
+void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA) { 
   uint8_t dxl_error;
-  int dxl_comm_result = packetHandlerAX->write2ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
+
+  int dxl_comm_result = handler->write2ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
 
   if (dxl_comm_result != COMM_SUCCESS) {
     Serial.print("COMM Error: ");
-    Serial.println(packetHandlerAX->getTxRxResult(dxl_comm_result));
+    Serial.println(handler->getTxRxResult(dxl_comm_result));
   } else if (dxl_error != 0) {
     Serial.print("Error Code: ");
-    Serial.println(packetHandlerAX->getRxPacketError(dxl_error));
-  }
-}
-
-void writeByteXM(int ID, int ADDRESS, uint16_t DATA) { 
-  uint8_t dxl_error;
-  int dxl_comm_result = packetHandlerXM->write2ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
-
-  if (dxl_comm_result != COMM_SUCCESS) {
-    Serial.print("COMM Error: ");
-    Serial.println(packetHandlerXM->getTxRxResult(dxl_comm_result));
-  } else if (dxl_error != 0) {
-    Serial.print("Error Code: ");
-    Serial.println(packetHandlerXM->getRxPacketError(dxl_error));
-  }
-}
-
-void writeByteXM_int32(int ID, int ADDRESS, int32_t DATA) { 
-  uint8_t dxl_error;
-  int dxl_comm_result = packetHandlerXM->write2ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
-
-  if (dxl_comm_result != COMM_SUCCESS) {
-    Serial.print("COMM Error: ");
-    Serial.println(packetHandlerXM->getTxRxResult(dxl_comm_result));
-  } else if (dxl_error != 0) {
-    Serial.print("Error Code: ");
-    Serial.println(packetHandlerXM->getRxPacketError(dxl_error));
+    Serial.println(handler->getRxPacketError(dxl_error));
   }
 }
 
