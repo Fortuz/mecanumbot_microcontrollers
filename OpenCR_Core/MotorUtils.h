@@ -24,9 +24,9 @@
 #define CLOSED                   0 
 
 // Mechanum drive working parameters
-#define WHEEL_SEPARATION_X       1
-#define WHEEL_SEPARATION_Y       0
-#define WHEEL_RADIUS             1
+#define WHEEL_SEPARATION_X       1 // 13 cm
+#define WHEEL_SEPARATION_Y       0 // 30,5 cm
+#define WHEEL_RADIUS             1 // 6,5 cm
 
 // AX-12A motor parameters (Neck and Grabber) - Position control
 // https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
