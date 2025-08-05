@@ -63,11 +63,12 @@ void loop() {
     if (RcData & RC100_BTN_3) neck_pos = 700; 
   }
 
-  // Set Mecanum drive velocity parameters to each wheel
-  int32_t velocity_BL = (1/WHEEL_RADIUS) * (goal_linear_x_velocity - goal_linear_y_velocity - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
-  int32_t velocity_BR = (1/WHEEL_RADIUS) * (goal_linear_x_velocity + goal_linear_y_velocity + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  // Set Mecanum drive velocity parameters to each wheel (x is straight, y is strafe)
+  // TIP: Balance the robot to keep a low strafe misalignment
   int32_t velocity_FL = (1/WHEEL_RADIUS) * (goal_linear_x_velocity + goal_linear_y_velocity - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
   int32_t velocity_FR = (1/WHEEL_RADIUS) * (goal_linear_x_velocity - goal_linear_y_velocity + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  int32_t velocity_BL = (1/WHEEL_RADIUS) * (goal_linear_x_velocity - goal_linear_y_velocity - (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
+  int32_t velocity_BR = (1/WHEEL_RADIUS) * (goal_linear_x_velocity + goal_linear_y_velocity + (WHEEL_SEPARATION_X + WHEEL_SEPARATION_Y) * goal_angular_velocity);
 
   set_WheelVelocities(velocity_BL, velocity_BR, velocity_FL, velocity_FR);
 

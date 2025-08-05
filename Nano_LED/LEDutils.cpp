@@ -1,5 +1,6 @@
 #include "LEDutils.h"
 
+
 void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int direction)
 {
   static uint16_t sPseudotime = 0;
@@ -168,6 +169,18 @@ void colorSolid( CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette)
   fill_solid(ledarray, numleds, newcolor);
 }
 
+void setLedBatch(CRGB* ledarray, int index, int mode, int color)
+{
+  if (mode == MODE_WAVE_RIGHT){
+    colorWaveFix(ledarray+index, BATCH_LEDS, gGradientPalettes[color],  RIGHT);
+  } else if (mode == MODE_WAVE_LEFT){
+    colorWaveFix(ledarray+index, BATCH_LEDS, gGradientPalettes[color],  LEFT);
+  } else if (mode == MODE_PULSE) {
+    colorPulse(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
+  } else if (mode == MODE_SOLID) {
+    colorSolid(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
+  }
+}
 
 // Palette definitions
 DEFINE_GRADIENT_PALETTE(black_gp) {
@@ -228,14 +241,16 @@ DEFINE_GRADIENT_PALETTE(pink_gp) {
 
 // Array of palette pointers
 const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
-  yellow_gp,
+  black_gp,
+  white_gp,
   green_gp,
   red_gp,
   blue_gp,
   cyan_gp,
   pink_gp,
-  white_gp,
-  black_gp};
+  yellow_gp};
+
+const uint8_t gGradientPaletteCount = sizeof( gGradientPalettes) / sizeof( TProgmemRGBGradientPalettePtr );
 
   /*
 // =======================================================================================
