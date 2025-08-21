@@ -21,8 +21,7 @@ L - Open Grippers <br>
 The LEDs just set to a default motion and will lit up when inicialized. Not controlled directly with the Controler but the functions are implemented.
 
 ## TODO
-- [ ] Include STL files for 3D print
-- [ ] Motor setup with Workbench
+- [ ] Include Grabber and Neck moving motors into the ROS2 architecture
 
 ## Requirements:
 Dynamixel Workbench (Windows only) <br>
