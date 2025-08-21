@@ -1,4 +1,4 @@
-# Mecanum_Arduino
+# Mecanumbot Microcontrollers
 
 This repository contains the microcontroller codes for the Mecanumbot project.
 The Mecanumbot project is a small, modified Turtlebot3 robot. Utilizes an OpenCR for motor controll. Equipped with 4 mecanum wheels, a grabber containing 2 motors and a camera moving neck motor.
