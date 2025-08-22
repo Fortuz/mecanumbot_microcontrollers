@@ -48,7 +48,7 @@ Navigate into the Arduino sketch folder and glone this repository. <br>
 
 ```bash
 $ cd  ~/Documents/Arduino
-$ git clone https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/
+$ git clone https://github.com/Fortuz/mecanumbot_microcontrollers.git
 ```
 The Nano_LED part can be uploaded to the Arduino Nano. Set the appropriate port (COM6), board (Arduino Nano), and bootloader (ATmega328P) in the Arduino IDE and push upload. <br>
 The OpenCR_Core part can be uploaded to the OpenCR board. Set the appropriate port (COM11), board (OpenCR Board), and  in the Arduino IDE and push upload.
