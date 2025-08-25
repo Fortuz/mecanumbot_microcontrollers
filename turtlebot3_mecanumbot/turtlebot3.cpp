@@ -123,8 +123,7 @@ static void update_gpios(uint32_t interval_ms);
 static void update_motor_status(uint32_t interval_ms);
 static void update_battery_status(uint32_t interval_ms);
 static void update_analog_sensors(uint32_t interval_ms);
-static void update_joint_status(uint32_t interval_ms);
-
+//static void update_joint_status(uint32_t interval_ms);
 
 DYNAMIXEL::USBSerialPortHandler port_dxl_slave(SERIAL_DXL_SLAVE);
 DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
@@ -201,81 +200,6 @@ enum ControlTableItemAddr{
   ADDR_PROFILE_ACC_BL      = 202,
   ADDR_PROFILE_ACC_BR      = 206,
 
-  /*
-  ADDR_PRESENT_CURRENT_L  = 120,
-  ADDR_PRESENT_CURRENT_R  = 124,
-  ADDR_PRESENT_VELOCITY_L = 128,
-  ADDR_PRESENT_VELOCITY_R = 132,
-  ADDR_PRESENT_POSITION_L = 136,
-  ADDR_PRESENT_POSITION_R = 140,
-  
-  ADDR_MOTOR_CONNECT      = 148,
-  ADDR_MOTOR_TORQUE       = 149,
-  ADDR_CMD_VEL_LINEAR_X   = 150,
-  ADDR_CMD_VEL_LINEAR_Y   = 154,
-  ADDR_CMD_VEL_LINEAR_Z   = 158,
-  ADDR_CMD_VEL_ANGULAR_X  = 162,
-  ADDR_CMD_VEL_ANGULAR_Y  = 166,
-  ADDR_CMD_VEL_ANGULAR_Z  = 170,
-  ADDR_PROFILE_ACC_L      = 174,
-  ADDR_PROFILE_ACC_R      = 178,
-
-  ADDR_TORQUE_JOINT             = 199,
-
-  ADDR_GOAL_POSITION_JOINT_1    = 200,
-  ADDR_GOAL_POSITION_JOINT_2    = 204,
-  ADDR_GOAL_POSITION_JOINT_3    = 208,
-  ADDR_GOAL_POSITION_JOINT_4    = 212,
-  ADDR_GOAL_POSITION_GRIPPER    = 216,
-  ADDR_GOAL_POSITION_WR_JOINT   = 220,
-  ADDR_GOAL_POSITION_WR_GRIPPER = 221,
-  ADDR_GOAL_POSITION_RD         = 222,
-
-  ADDR_PRESENT_POSITION_JOINT_1 = 224,
-  ADDR_PRESENT_POSITION_JOINT_2 = 228,
-  ADDR_PRESENT_POSITION_JOINT_3 = 232,
-  ADDR_PRESENT_POSITION_JOINT_4 = 236,
-  ADDR_PRESENT_POSITION_GRIPPER = 240,
-
-  ADDR_PRESENT_VELOCITY_JOINT_1 = 244,
-  ADDR_PRESENT_VELOCITY_JOINT_2 = 248,
-  ADDR_PRESENT_VELOCITY_JOINT_3 = 252,
-  ADDR_PRESENT_VELOCITY_JOINT_4 = 256,
-  ADDR_PRESENT_VELOCITY_GRIPPER = 260,
-
-  ADDR_PRESENT_CURRENT_JOINT_1  = 264,
-  ADDR_PRESENT_CURRENT_JOINT_2  = 266,
-  ADDR_PRESENT_CURRENT_JOINT_3  = 268,
-  ADDR_PRESENT_CURRENT_JOINT_4  = 270,
-  ADDR_PRESENT_CURRENT_GRIPPER  = 272,
-
-  ADDR_PROFILE_ACC_JOINT_1      = 284,
-  ADDR_PROFILE_ACC_JOINT_2      = 288,
-  ADDR_PROFILE_ACC_JOINT_3      = 292,
-  ADDR_PROFILE_ACC_JOINT_4      = 296,
-  ADDR_PROFILE_ACC_GRIPPER      = 300,
-  ADDR_PROFILE_ACC_WR_JOINT     = 304,
-  ADDR_PROFILE_ACC_WR_GRIPPER   = 305,
-  ADDR_PROFILE_ACC_RD           = 306,
-
-  ADDR_PROFILE_VEL_JOINT_1      = 308,
-  ADDR_PROFILE_VEL_JOINT_2      = 312,
-  ADDR_PROFILE_VEL_JOINT_3      = 316,
-  ADDR_PROFILE_VEL_JOINT_4      = 320,
-  ADDR_PROFILE_VEL_GRIPPER      = 324,
-  ADDR_PROFILE_VEL_WR_JOINT     = 328,
-  ADDR_PROFILE_VEL_WR_GRIPPER   = 329,
-  ADDR_PROFILE_VEL_RD           = 330,
-
-  ADDR_GOAL_CURRENT_JOINT_1     = 332,
-  ADDR_GOAL_CURRENT_JOINT_2     = 334,
-  ADDR_GOAL_CURRENT_JOINT_3     = 336,
-  ADDR_GOAL_CURRENT_JOINT_4     = 338,
-  ADDR_GOAL_CURRENT_GRIPPER     = 340,  
-  ADDR_GOAL_CURRENT_WR_JOINT    = 342,
-  ADDR_GOAL_CURRENT_WR_GRIPPER  = 343,
-  ADDR_GOAL_CURRENT_RD          = 344,
-  */
 };
 
 typedef struct ControlItemVariables{
@@ -319,32 +243,6 @@ typedef struct ControlItemVariables{
   int32_t cmd_vel_angular[3];
   uint32_t profile_acceleration[MotorLocation::MOTOR_NUM_MAX];
 
-  /*
-  bool joint_torque_enable_state;
-  joint_position_info_t joint_goal_position;  
-  joint_position_info_t joint_present_position;
-  joint_velocity_info_t joint_present_velocity;
-  joint_current_info_t joint_present_current;
-  joint_accel_info_t joint_profile_acc;
-  joint_accel_info_t joint_profile_vel;
-  joint_current_info_t joint_goal_current;
-
-  bool joint_goal_position_wr_joint;
-  bool joint_goal_position_wr_gripper;
-  bool joint_goal_position_rd;
-
-  bool joint_profile_acc_wr_joint;
-  bool joint_profile_acc_wr_gripper;
-  bool joint_profile_acc_rd;
-
-  bool joint_profile_vel_wr_joint;
-  bool joint_profile_vel_wr_gripper;
-  bool joint_profile_vel_rd;
-
-  bool joint_goal_current_wr_joint;
-  bool joint_goal_current_wr_gripper;
-  bool joint_goal_current_rd;
-  */
 }ControlItemVariables;
 
 static ControlItemVariables control_items;
@@ -357,10 +255,7 @@ void TurtleBot3Core::begin(const char* model_name)
 {
   uint16_t model_motor_rpm;
 
-  if(strcmp(model_name, "Burger") == 0 || strcmp(model_name, "burger") == 0){
-    p_tb3_model_info = &burger_info;
-    model_motor_rpm = 61;
-  }else if(strcmp(model_name, "Mecanumbot") == 0){
+  if(strcmp(model_name, "Mecanumbot") == 0){
     p_tb3_model_info = &mecanumbot_info;
     model_motor_rpm = 77;
   }else{
@@ -391,7 +286,6 @@ void TurtleBot3Core::begin(const char* model_name)
   // Setting for ROBOTIS RC100 remote controller and cmd_vel
   ret = controllers.init(max_linear_velocity, max_angular_velocity);
   DEBUG_PRINTLN(ret==true?"RC100 Controller setup completed.":"RC100 Controller setup failed.");
-
 
   DEBUG_PRINT("Dynamixel2Arduino Item Max : ");
   DEBUG_PRINTLN(CONTROL_ITEM_MAX);
@@ -471,14 +365,7 @@ void TurtleBot3Core::begin(const char* model_name)
   dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_FR, control_items.present_current[MotorLocation::FRONT_RIGHT]);
   dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_BL, control_items.present_current[MotorLocation::BACK_LEFT]);
   dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_BR, control_items.present_current[MotorLocation::BACK_RIGHT]);
-  /*
-  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_L, control_items.present_position[MotorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_POSITION_R, control_items.present_position[MotorLocation::RIGHT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_L, control_items.present_velocity[MotorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_VELOCITY_R, control_items.present_velocity[MotorLocation::RIGHT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_L, control_items.present_current[MotorLocation::LEFT]);
-  dxl_slave.addControlItem(ADDR_PRESENT_CURRENT_R, control_items.present_current[MotorLocation::RIGHT]);
-  */
+
   // Items to control motors
   dxl_slave.addControlItem(ADDR_MOTOR_CONNECT, control_items.is_connect_motors);
   dxl_slave.addControlItem(ADDR_MOTOR_TORQUE, control_items.motor_torque_enable_state);
@@ -559,7 +446,6 @@ void TurtleBot3Core::run()
   update_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_battery_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_analog_sensors(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
-  //update_joint_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
 
   // Packet processing with ROS2 Node.
   dxl_slave.processPacket();
@@ -769,105 +655,7 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
     case ADDR_PROFILE_ACC_BR:
       if(get_connection_state_with_motors() == true)
         motor_driver.write_profile_acceleration(control_items.profile_acceleration[MotorLocation::FRONT_RIGHT], control_items.profile_acceleration[MotorLocation::FRONT_LEFT], control_items.profile_acceleration[MotorLocation::BACK_RIGHT], control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
-      break;
-
-    /*
-    case ADDR_TORQUE_JOINT:
-      manipulator_driver.set_torque(control_items.joint_torque_enable_state);
-      break;
-
-    // ADDR_GOAL_POSITION
-    //
-    case ADDR_GOAL_POSITION_WR_JOINT:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_goal_position_wr_joint == true) {
-        manipulator_driver.write_goal_position_joint(control_items.joint_goal_position);
-      }
-      control_items.joint_goal_position_wr_joint = false;
-      break;
-
-    case ADDR_GOAL_POSITION_WR_GRIPPER:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_goal_position_wr_gripper == true) {
-        manipulator_driver.write_goal_position_gripper(control_items.joint_goal_position);
-      }
-      control_items.joint_goal_position_wr_gripper = false;
-      break;
-
-    case ADDR_GOAL_POSITION_RD:
-      if (control_items.joint_goal_position_rd == true) {
-        manipulator_driver.read_goal_position(control_items.joint_goal_position);
-      }
-      control_items.joint_goal_position_rd = false;
-      break;
-
-    // ADDR_PROFILE_ACC
-    //
-    case ADDR_PROFILE_ACC_WR_JOINT:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_profile_acc_wr_joint == true) {
-        manipulator_driver.write_profile_acceleration_joint(control_items.joint_profile_acc);
-      }
-      control_items.joint_profile_acc_wr_joint = false;
-      break;      
-
-    case ADDR_PROFILE_ACC_WR_GRIPPER:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_profile_acc_wr_gripper == true) {
-        manipulator_driver.write_profile_acceleration_gripper(control_items.joint_profile_acc);
-      }
-      control_items.joint_profile_acc_wr_joint = false;
-      break;      
-
-    case ADDR_PROFILE_ACC_RD:
-      if (control_items.joint_profile_acc_rd == true) {
-        manipulator_driver.read_profile_acceleration(control_items.joint_profile_acc);
-      }
-      control_items.joint_profile_acc_rd = false;
-      break;     
-
-    // ADDR_PROFILE_VEL
-    //
-    case ADDR_PROFILE_VEL_WR_JOINT:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_profile_vel_wr_joint == true) {
-        manipulator_driver.write_profile_velocity_joint(control_items.joint_profile_vel);
-      }
-      control_items.joint_profile_vel_wr_joint = false;
-      break;      
-
-    case ADDR_PROFILE_VEL_WR_GRIPPER:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_profile_vel_wr_gripper == true) {
-        manipulator_driver.write_profile_velocity_gripper(control_items.joint_profile_vel);
-      }
-      control_items.joint_profile_vel_wr_gripper = false;
-      break;   
-
-    case ADDR_PROFILE_VEL_RD:
-      if (control_items.joint_profile_vel_rd == true) {
-        manipulator_driver.read_profile_velocity(control_items.joint_profile_vel);
-      }
-      control_items.joint_profile_vel_rd = false;
-      break;      
-
-    // ADDR_GOAL_CURRENT
-    //
-    case ADDR_GOAL_CURRENT_WR_JOINT:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_goal_current_wr_joint == true) {
-        manipulator_driver.write_goal_current_joint(control_items.joint_goal_current);
-      }
-      control_items.joint_goal_current_wr_joint = false;
-      break;      
-
-    case ADDR_GOAL_CURRENT_WR_GRIPPER:
-      if (get_connection_state_with_ros2_node() == true && control_items.joint_goal_current_wr_gripper == true) {
-        manipulator_driver.write_goal_current_gripper(control_items.joint_goal_current);
-      }
-      control_items.joint_goal_current_wr_gripper = false;
-      break;   
-
-    case ADDR_GOAL_CURRENT_RD:
-      if (control_items.joint_goal_current_rd == true) {
-        manipulator_driver.read_goal_current(control_items.joint_goal_current);
-      }
-      control_items.joint_goal_current_rd = false;
-      break;
-      */        
+      break;        
   }
       
 }
