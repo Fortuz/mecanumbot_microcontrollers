@@ -77,25 +77,18 @@ static void performBootSequence() {
   delay(200);
 
   // Neck sweep: move to max, then min, then center
-  Serial.println("Neck: to max");
+  Serial.println("Neck: to max and grabber to open");
   set_NeckPosition(NECK_MAX_POSITION_VALUE);
+  set_GrabberStatus(OPENED);
   delay(700);
-  Serial.println("Neck: to min");
+  Serial.println("Neck: to min grabber to closed");
   set_NeckPosition(NECK_MIN_POSITION_VALUE);
+  set_GrabberStatus(CLOSED);
   delay(700);
   Serial.println("Neck: to center");
   set_NeckPosition((NECK_MIN_POSITION_VALUE + NECK_MAX_POSITION_VALUE)/2);
   delay(500);
 
-  // Grabber open/close
-  Serial.println("Grabber: open");
-  set_GrabberStatus(OPENED);
-  delay(500);
-  Serial.println("Grabber: close");
-  set_GrabberStatus(CLOSED);
-  delay(500);
-  set_GrabberStatus(OPENED);
-  delay(300);
 
   // Wheels: small forward pulse and stop
   Serial.println("Wheels: small forward pulse");
