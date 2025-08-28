@@ -21,7 +21,15 @@ L - Open Grippers <br>
 The LEDs just set to a default motion and will lit up when inicialized. Not controlled directly with the Controler but the functions are implemented.
 
 ## TODO
-- [ ] Include Grabber and Neck moving motors into the ROS2 architecture
+
+<p align="center">
+  <img src="https://github.com/Fortuz/mecanumbot_microcontrollers/blob/main/docs/images/Mecanumbot_MotorIDs.png" width="600" alt="Mecanumbot">
+</p>
+
+<p align="center">
+  <img src="https://github.com/Fortuz/mecanumbot_microcontrollers/blob/main/docs/images/RC100_button_layout.png" width="600" alt="Mecanumbot">
+</p>
+
 
 ## Requirements:
 Dynamixel Workbench (Windows only) <br>
