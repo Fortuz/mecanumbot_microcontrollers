@@ -36,13 +36,13 @@ The robot is mounted with extra motors and custom made 3D printed elements.
 
 ## Motor setup
 
-|:  |: Neck :|: Grabber L :|: Grabber R :|: Wheel FL :|: Wheel FR :|: Wheel BR :|: Wheel BL :|
-|--- |--- |--- |--- |--- |--- |--- |--- |
-| Type |: AX-12A :|: AX-12A :|: AX-12A :|: XM430-W210-T :|: XM430-W210-T :|: XM430-W210-T :|: XM430-W210-T :|
-|: ID |: 7 :|: 6 :|: 5 :|: 3 :|: 4 :|: 2 :|: 1 :|
-|: Protocol |: 1 :|: 1 :|: 1 :|: 2 :|: 2 :|: 2 :|: 2 :|:
-|: Baudrate |: 1M :|: 1M :|: 1 M :|: 1M :|: 1M :|: 1M :|: 1M :|
-|: Mode |: Position :|: Position :|: Position :|: Velocity :|: Velocity :|: Velocity :|: Velocity :|
+|  | Neck | Grabber L | Grabber R | Wheel FL | Wheel FR | Wheel BR | Wheel BL |
+|:--- |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Type | AX-12A | AX-12A | AX-12A | XM430-W210-T | XM430-W210-T | XM430-W210-T | XM430-W210-T |
+| ID | 7 | 6 | 5 | 3 | 4 | 2 | 1 |
+| Protocol | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
+| Baudrate | 1M | 1M | 1 M | 1M | 1M | 1M | 1M |
+| Mode | Position | Position | Position | Velocity | Velocity | Velocity | Velocity |
 
 [XM430-W210-T motor datasheet](https://emanual.robotis.com/docs/en/dxl/x/xm430-w210/) <br>
 [AX-12A motor datasheet](https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/) <br>
@@ -65,23 +65,23 @@ String assembly - Every mode and every color is 2 character with the following s
 
 [Mode_FL, Color_FL, Mode_FR, Color_FR,, Mode_BR, Color_BR, Mode_BL, Color_BL] 
 
-|: Modes :|: Value :|
-|--- |--- |
-|: WAVE_RIGHT |: 01 :|
-|: WAVE_LEFT  |: 02 :|
-|: PULSE      |: 03 :|
-|: SOLID      |: 04 :|
+| Modes | Value |
+|:--- |:---:|
+| WAVE_RIGHT | 01 |
+| WAVE_LEFT  | 02 |
+| PULSE      | 03 |
+| SOLID      | 04 |
 
-|: Colors :|: Value :|
-|--- |--- |
-|: BLACK   |: 01 :|
-|: WHITE   |: 01 :|
-|: GREEN   |: 02 :|
-|: RED     |: 03 :|
-|: BLUE    |: 04 :|
-|: CYAN    |: 05 :|
-|: PINK    |: 06 :|
-|: YELLOW  |: 07 :|
+| Colors | Value |
+|:--- |:---:|
+| BLACK   | 01 |
+| WHITE   | 01 |
+| GREEN   | 02 |
+| RED     | 03 |
+| BLUE    | 04 |
+| CYAN    | 05 |
+| PINK    | 06 |
+| YELLOW | 07 |
 
 ### OpenCR_Core
 
