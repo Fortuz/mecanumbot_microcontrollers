@@ -52,11 +52,11 @@ static float max_linear_velocity, min_linear_velocity;
 static float max_angular_velocity, min_angular_velocity;
 
 static float goal_velocity[VelocityType::TYPE_NUM_MAX] = {0.0, 0.0, 0.0}; // lin_x, lin_y, ang_z
-static float goal_velocity_from_cmd[MotorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0}; 
-static float goal_velocity_from_rc100[MotorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0};  
-static float goal_velocity_from_button[MotorLocation::MOTOR_NUM_MAX] = {0.0, 0.0, 0.0, 0.0};
+static float goal_velocity_from_cmd[VelocityType::TYPE_NUM_MAX] = {0.0, 0.0, 0.0}; 
+static float goal_velocity_from_rc100[VelocityType::TYPE_NUM_MAX] = {0.0, 0.0, 0.0};  
+static float goal_velocity_from_button[VelocityType::TYPE_NUM_MAX] = {0.0, 0.0, 0.0};
 
-static bool goal_state_from_rc100[2] = {0, 0}; // TODO
+static bool goal_state_from_rc100[2] = {0, 0};
 
 static void update_goal_velocity_from_3values(void);
 static void test_motors_with_buttons(uint8_t buttons);
@@ -104,18 +104,19 @@ static void update_analog_sensors(uint32_t interval_ms);
 //static void update_joint_status(uint32_t interval_ms);
 
 DYNAMIXEL::USBSerialPortHandler port_dxl_slave(SERIAL_DXL_SLAVE);
-//DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
-DYNAMIXEL::Slave dxl_slave_ax(port_dxl_slave, MODEL_NUM_AX_SLAVE);
-DYNAMIXEL::Slave dxl_slave_xm(port_dxl_slave, MODEL_NUM_XM_SLAVE);
+DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
+//DYNAMIXEL::Slave dxl_slave_ax(port_dxl_slave, MODEL_NUM_AX_SLAVE);
+//DYNAMIXEL::Slave dxl_slave_xm(port_dxl_slave, MODEL_NUM_XM_SLAVE);
 
 enum ControlTableItemAddr{
+  ADDR_MODEL_NUMBER    = 0,
   ADDR_MODEL_INFORM    = 2,
-  
-  ADDR_MILLIS          = 10,
+  ADDR_FIRMWARE_VERSION= 6,
+  ADDR_ID              = 7,
+  ADDR_BAUDRATE        = 8,
 
-  ADDR_DEBUG_MODE      = 14,  
-  ADDR_CONNECT_ROS2    = 15,
-  ADDR_CONNECT_MANIP   = 16,
+  ADDR_MILLIS          = 10,
+  ADDR_MICROS          = 14,
 
   ADDR_DEVICE_STATUS   = 18,
   ADDR_HEARTBEAT       = 19,
@@ -179,6 +180,10 @@ enum ControlTableItemAddr{
   ADDR_PROFILE_ACC_FR      = 198,
   ADDR_PROFILE_ACC_BL      = 202,
   ADDR_PROFILE_ACC_BR      = 206,
+
+  ADDR_DEBUG_MODE      = 210,  // TODO: Check if used
+  ADDR_CONNECT_ROS2    = 214,
+  ADDR_CONNECT_MANIP   = 218,
 
 };
 
@@ -386,7 +391,7 @@ void TurtleBot3Core::begin(const char* model_name)
   sensors.makeMelody(1); 
 
   if (get_connection_state_with_motors() == true) {
-    const float boot_lin = 0.05f; // small linear speed (m/s)
+    const float boot_lin = 0.1f; // small linear speed (m/s)
 
     // forward
     motor_driver.control_motors(p_tb3_model_info->wheel_separation_x,
@@ -463,7 +468,7 @@ void TurtleBot3Core::run()
     }
     update_goal_velocity_from_3values();
     if(get_connection_state_with_motors() == true){
-      motor_driver.control_motors(p_tb3_model_info->wheel_separation_x, p_tb3_model_info->wheel_separation_y, goal_velocity[VelocityType::LINEAR_X], goal_velocity[VelocityType::LINEAR_Y], goal_velocity[VelocityType::ANGULAR]); // TODO
+      motor_driver.control_motors(p_tb3_model_info->wheel_separation_x, p_tb3_model_info->wheel_separation_y, goal_velocity[VelocityType::LINEAR_X], goal_velocity[VelocityType::LINEAR_Y], goal_velocity[VelocityType::ANGULAR]); // TODO: Wheel radius
     }
   }  
 }
@@ -747,8 +752,8 @@ const float TEST_RADIAN = 3.14; // 180 degree
 
 void test_motors_with_buttons(uint8_t buttons)
 {
-  static bool move[2] = {false, false};
-  static int32_t saved_tick[2] = {0, 0};
+  static bool move[VelocityType::TYPE_NUM_MAX] = {false, false, false};
+  static int32_t saved_tick[MotorLocation::MOTOR_NUM_MAX] = {0, 0, 0, 0};
   static double diff_encoder = 0.0;
 
   int32_t current_tick[2] = {0, 0};
