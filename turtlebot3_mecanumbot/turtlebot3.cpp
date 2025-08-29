@@ -41,28 +41,6 @@ static const TB3ModelInfo mecanumbot_info = {
   false,
 };
 
-static const TB3ModelInfo waffle_info = {
-  "Waffle",
-  2,
-  0.033,
-  0.287,
-  0.0,
-  0.1435,
-  0.220,
-  false,
-};
-
-static const TB3ModelInfo burger_info = {
-  "Burger",
-  1,
-  0.033,
-  0.160,
-  0.0,
-  0.080,
-  0.105,
-  false,
-};
-
 /*******************************************************************************
 * Declaration for motors
 *******************************************************************************/
@@ -126,7 +104,9 @@ static void update_analog_sensors(uint32_t interval_ms);
 //static void update_joint_status(uint32_t interval_ms);
 
 DYNAMIXEL::USBSerialPortHandler port_dxl_slave(SERIAL_DXL_SLAVE);
-DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
+//DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
+DYNAMIXEL::Slave dxl_slave_ax(port_dxl_slave, MODEL_NUM_AX_SLAVE);
+DYNAMIXEL::Slave dxl_slave_xm(port_dxl_slave, MODEL_NUM_XM_SLAVE);
 
 enum ControlTableItemAddr{
   ADDR_MODEL_INFORM    = 2,
