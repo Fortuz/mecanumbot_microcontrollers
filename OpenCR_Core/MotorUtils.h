@@ -7,7 +7,7 @@
 // General parameters for all motors
 #define DEVICENAME               "OpenCR_DXL_Port"  // For OpenCR
 #define BAUDRATE                 115200
-#define VOLTAGE_PIN 16                               // ADC0 on OpenCR
+#define VOLTAGE_PIN              16                 // ADC0 on OpenCR
 
 #define TORQUE_ENABLE            1
 #define TORQUE_DISABLE           0
