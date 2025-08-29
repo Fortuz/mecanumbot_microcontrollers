@@ -80,6 +80,7 @@ static void performBootSequence() {
   Serial.println("Neck: to max and grabber to open");
   set_NeckPosition(NECK_MAX_POSITION_VALUE);
   set_GrabberStatus(OPENED);
+  set_WheelVelocities(200, 200, 200, 200); // small test velocity
   delay(700);
   Serial.println("Neck: to min grabber to closed");
   set_NeckPosition(NECK_MIN_POSITION_VALUE);
@@ -87,12 +88,13 @@ static void performBootSequence() {
   delay(700);
   Serial.println("Neck: to center");
   set_NeckPosition((NECK_MIN_POSITION_VALUE + NECK_MAX_POSITION_VALUE)/2);
+  set_WheelVelocities(0, 0, 0, 0); // small test velocity
   delay(500);
 
 
   // Wheels: small forward pulse and stop
   Serial.println("Wheels: small forward pulse");
-  set_WheelVelocities(100, 100, 100, 100); // small test velocity
+  set_WheelVelocities(200, 200, 200, 200); // small test velocity
   delay(600);
   set_WheelVelocities(0,0,0,0);
   delay(200);
