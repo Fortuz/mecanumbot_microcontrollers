@@ -22,7 +22,7 @@
 *******************************************************************************/
 void setup()
 {
-  // Begin TurtleBot3 core for support Waffle.
+  // Begin TurtleBot3 core for support Mecanumbot.
   TurtleBot3Core::begin("Mecanumbot");
 }
 
