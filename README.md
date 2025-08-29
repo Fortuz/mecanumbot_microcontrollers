@@ -41,7 +41,7 @@ The robot is mounted with extra motors and custom made 3D printed elements.
 | Type | AX-12A | AX-12A | AX-12A | XM430-W210-T | XM430-W210-T | XM430-W210-T | XM430-W210-T |
 | ID | 7 | 6 | 5 | 3 | 4 | 2 | 1 |
 | Protocol | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
-| Baudrate | 1M | 1M | 1 M | 1M | 1M | 1M | 1M |
+| Baudrate | 115200 | 115200 | 115200 | 115200 | 115200 | 115200 | 115200|
 | Mode | Position | Position | Position | Velocity | Velocity | Velocity | Velocity |
 
 [XM430-W210-T motor datasheet](https://emanual.robotis.com/docs/en/dxl/x/xm430-w210/) <br>
