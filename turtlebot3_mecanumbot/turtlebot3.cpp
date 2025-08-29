@@ -385,6 +385,30 @@ void TurtleBot3Core::begin(const char* model_name)
   //To indicate that the initialization is complete.
   sensors.makeMelody(1); 
 
+  if (get_connection_state_with_motors() == true) {
+    const float boot_lin = 0.05f; // small linear speed (m/s)
+
+    // forward
+    motor_driver.control_motors(p_tb3_model_info->wheel_separation_x,
+                                p_tb3_model_info->wheel_separation_y,
+                                boot_lin, 0.0f, 0.0f);
+    delay(200);
+
+    // reverse
+    motor_driver.control_motors(p_tb3_model_info->wheel_separation_x,
+                                p_tb3_model_info->wheel_separation_y,
+                                -boot_lin, 0.0f, 0.0f);
+    delay(200);
+
+    // stop
+    motor_driver.control_motors(p_tb3_model_info->wheel_separation_x,
+                                p_tb3_model_info->wheel_separation_y,
+                                0.0f, 0.0f, 0.0f);
+  }
+  else {
+    DEBUG_PRINTLN("Get connection state with motors returned with FALSE");
+  }
+
   DEBUG_PRINTLN("Begin End...");
 }
 
