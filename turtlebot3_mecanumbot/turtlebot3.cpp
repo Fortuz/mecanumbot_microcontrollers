@@ -15,6 +15,7 @@
 *******************************************************************************/
 
 #include "turtlebot3.h"
+#include "camera_gimbal_driver.h"
 
 /*******************************************************************************
 * Definition of dependency data according to TB3 model.
@@ -46,6 +47,7 @@ static const TB3ModelInfo mecanumbot_info = {
 *******************************************************************************/
 static Turtlebot3MotorDriver motor_driver;
 // static OpenManipulatorDriver manipulator_driver(motor_driver.getDxl());
+static CameraGimbalDriver ax_driver(motor_driver.getDxl());
 
 static const TB3ModelInfo* p_tb3_model_info;
 static float max_linear_velocity, min_linear_velocity;
@@ -99,6 +101,7 @@ static void update_imu(uint32_t interval_ms);
 static void update_times(uint32_t interval_ms);
 static void update_gpios(uint32_t interval_ms);
 static void update_motor_status(uint32_t interval_ms);
+static void update_ax_motor_status(uint32_t interval_ms);
 static void update_battery_status(uint32_t interval_ms);
 static void update_analog_sensors(uint32_t interval_ms);
 //static void update_joint_status(uint32_t interval_ms);
@@ -181,7 +184,17 @@ enum ControlTableItemAddr{
   ADDR_PROFILE_ACC_BL      = 202,
   ADDR_PROFILE_ACC_BR      = 206,
 
-};
+  // AX motors for manipulator and camera
+  AX_ADDR_TORQUE = 210,
+  AX_ADDR_NECK_GOAL = 214,
+  AX_ADDR_GRABBER_LEFT_GOAL = 218,
+  AX_ADDR_GRABBER_RIGHT_GOAL = 222,
+
+  AX_ADDR_PRESENT_NECK_POSITION = 226,
+  
+  AX_ADDR_PRESENT_GRABBER_LEFT_POSITION = 230,
+  AX_ADDR_PRESENT_GRABBER_RIGHT_POSITION = 234,
+  };
 
 typedef struct ControlItemVariables{
   uint32_t model_inform;
@@ -223,6 +236,15 @@ typedef struct ControlItemVariables{
   int32_t cmd_vel_linear[3];
   int32_t cmd_vel_angular[3];
   uint32_t profile_acceleration[MotorLocation::MOTOR_NUM_MAX];
+
+  // AX motors (protocol 1.0)
+  bool ax_torque_enable_state;
+  int32_t ax_neck_goal;
+  int32_t ax_grab_left_goal;
+  int32_t ax_grab_right_goal;
+  uint32_t ax_present_neck_position;
+  uint32_t ax_present_grab_left_position;
+  uint32_t ax_present_grab_right_position;
 
 }ControlItemVariables;
 
@@ -361,6 +383,15 @@ void TurtleBot3Core::begin(const char* model_name)
   dxl_slave.addControlItem(ADDR_PROFILE_ACC_BL, control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
   dxl_slave.addControlItem(ADDR_PROFILE_ACC_BR, control_items.profile_acceleration[MotorLocation::BACK_RIGHT]);
 
+  // AX motors control items (user-defined)
+  dxl_slave.addControlItem(AX_ADDR_TORQUE, control_items.ax_torque_enable_state);
+  dxl_slave.addControlItem(AX_ADDR_NECK_GOAL, control_items.ax_neck_goal);
+  dxl_slave.addControlItem(AX_ADDR_GRABBER_LEFT_GOAL, control_items.ax_grab_left_goal);
+  dxl_slave.addControlItem(AX_ADDR_GRABBER_RIGHT_GOAL, control_items.ax_grab_right_goal);
+  dxl_slave.addControlItem(AX_ADDR_PRESENT_NECK_POSITION, control_items.ax_present_neck_position);
+  dxl_slave.addControlItem(AX_ADDR_PRESENT_GRABBER_LEFT_POSITION, control_items.ax_present_grab_left_position);
+  dxl_slave.addControlItem(AX_ADDR_PRESENT_GRABBER_RIGHT_POSITION, control_items.ax_present_grab_right_position);
+
   // Set user callback function for processing write command from master.
   dxl_slave.setWriteCallbackFunc(dxl_slave_write_callback_func);
 
@@ -378,6 +409,14 @@ void TurtleBot3Core::begin(const char* model_name)
     DEBUG_PRINTLN();
   } 
   control_items.is_connect_motors = get_connection_state_with_motors();  
+
+  // Init AX motors (Neck/Grabbers)
+  ax_driver.init();
+  if (ax_driver.is_connected()) {
+    set_connection_state_with_joints(true);
+    control_items.is_connect_manipulator = true;
+    ax_driver.setTorque(true);
+  }
 
   // Init IMU 
   sensors.initIMU();
@@ -408,6 +447,24 @@ void TurtleBot3Core::begin(const char* model_name)
   }
   else {
     DEBUG_PRINTLN("Get connection state with motors returned with FALSE");
+  }
+
+  // Brief AX motion at boot if connected (IDs: Neck=7, Left=6, Right=5)
+  if (get_connection_state_with_joints()) {
+    const uint16_t center = 800; // ~0 degrees
+    const uint16_t d90deg = 90; // ~90 degrees
+    // Neck nod
+    ax_driver.writeGoal(7, center);
+    //ax_driver.writeGoal(7, center);
+    // Grabbers open/close (tune these as needed)
+    const uint16_t openPos = 350;
+    const uint16_t closePos = 700;
+    const uint16_t midPos = 512;
+    ax_driver.writeGoal(6, midPos);
+    ax_driver.writeGoal(5, midPos);
+    //delay(600);
+
+    //ax_driver.setTorque(false); // disable torque after motion
   }
 
   DEBUG_PRINTLN("Begin End...");
@@ -449,6 +506,9 @@ void TurtleBot3Core::run()
   update_times(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_gpios(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+  // Update AX (neck/grabbers) status into control table
+  update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+
   update_battery_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_analog_sensors(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
 
@@ -604,6 +664,20 @@ void update_motor_status(uint32_t interval_ms)
   }  
 }
 
+void update_ax_motor_status(uint32_t interval_ms)
+{
+    static uint32_t pre_time = 0;
+    if (millis() - pre_time >= INTERVAL_MS_TO_UPDATE_CONTROL_ITEM) {
+      pre_time = millis();
+      uint16_t p;
+      if (get_connection_state_with_joints() == true) {
+        if (ax_driver.readPresent(7, p)) control_items.ax_present_neck_position = p;  
+        if (ax_driver.readPresent(6, p)) control_items.ax_present_grab_left_position = p;  
+        if (ax_driver.readPresent(5, p)) control_items.ax_present_grab_right_position = p;  
+      }
+    }
+  }
+
 
 /*******************************************************************************
 * Callback function definition to be used in communication with the ROS2 node.
@@ -661,6 +735,24 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
       if(get_connection_state_with_motors() == true)
         motor_driver.write_profile_acceleration(control_items.profile_acceleration[MotorLocation::FRONT_RIGHT], control_items.profile_acceleration[MotorLocation::FRONT_LEFT], control_items.profile_acceleration[MotorLocation::BACK_RIGHT], control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
       break;        
+
+    // AX motors control via slave table
+    // 7 - Neck, 6 - Left Grabber, 5 - Right Grabber
+    case AX_ADDR_TORQUE:
+      ax_driver.setTorque(control_items.ax_torque_enable_state);
+      break;
+    case AX_ADDR_NECK_GOAL:
+      control_items.ax_neck_goal = constrain(control_items.ax_neck_goal, 200, 860);
+      ax_driver.writeGoal(7, (uint16_t)control_items.ax_neck_goal);
+      break;
+    case AX_ADDR_GRABBER_LEFT_GOAL:
+      control_items.ax_grab_left_goal = constrain(control_items.ax_grab_left_goal, 160, 854);
+      ax_driver.writeGoal(6, (uint16_t)control_items.ax_grab_left_goal);
+      break;
+    case AX_ADDR_GRABBER_RIGHT_GOAL:
+      control_items.ax_grab_right_goal = constrain(control_items.ax_grab_right_goal, 160, 854);
+      ax_driver.writeGoal(5, (uint16_t)control_items.ax_grab_right_goal);
+      break;
   }
       
 }
