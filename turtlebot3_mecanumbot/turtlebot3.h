@@ -24,7 +24,7 @@
 #include "turtlebot3_diagnosis.h"
 // #include "open_manipulator_driver.h"
 
-#define DEBUG_ENABLE 1
+#define DEBUG_ENABLE 0
 
 #if DEBUG_ENABLE
   #define DEBUG_SERIAL_BEGIN(x) SerialBT2.begin(x)

@@ -109,14 +109,14 @@ DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
 //DYNAMIXEL::Slave dxl_slave_xm(port_dxl_slave, MODEL_NUM_XM_SLAVE);
 
 enum ControlTableItemAddr{
-  ADDR_MODEL_NUMBER    = 0,
   ADDR_MODEL_INFORM    = 2,
-  ADDR_FIRMWARE_VERSION= 6,
-  ADDR_ID              = 7,
-  ADDR_BAUDRATE        = 8,
+
 
   ADDR_MILLIS          = 10,
-  ADDR_MICROS          = 14,
+  
+  ADDR_DEBUG_MODE      = 14,
+  ADDR_CONNECT_ROS2    = 15,
+  ADDR_CONNECT_MANIP   = 16,
 
   ADDR_DEVICE_STATUS   = 18,
   ADDR_HEARTBEAT       = 19,
@@ -180,10 +180,6 @@ enum ControlTableItemAddr{
   ADDR_PROFILE_ACC_FR      = 198,
   ADDR_PROFILE_ACC_BL      = 202,
   ADDR_PROFILE_ACC_BR      = 206,
-
-  ADDR_DEBUG_MODE      = 210,  // TODO: Check if used
-  ADDR_CONNECT_ROS2    = 214,
-  ADDR_CONNECT_MANIP   = 218,
 
 };
 
