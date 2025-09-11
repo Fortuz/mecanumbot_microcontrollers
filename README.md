@@ -53,6 +53,10 @@ The robot is mounted with extra motors and custom made 3D printed elements.
 
 ## Project details
 
+### General working of the code
+
+There is a control table, that bounds the memory adresses to the motors and certain functionalities. There are two sets of motors as it can be seen in the above diagram. The AX motors work on protocol 1 and the XM motors work on protocol 2. This means that protocol switching is implemented in the code, i.e. the base protocol is 2 and when an AX motor is being communicated with, the protocol changes to 1.
+
 ### Nano_LED
 
 The Nano is a small micro controller, microros is not an option. The Nano just uses Serial communication. 
