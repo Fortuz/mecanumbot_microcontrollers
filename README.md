@@ -5,6 +5,11 @@ The Mecanumbot project is a small, modified Turtlebot3 robot. Utilizes an OpenCR
 The second microcontroller is an Arduino Nano which controlls the LEDs on the robot.
 The robot can be controlled with the RC100 controller.
 
+## Authors
+**Balázs Nagy** <br> 
+**Benedek Fegyó** <br>
+**Csenge Hubay** <br>
+
 ## Project outline
 
 - **Nano_LED**: Code for the Nano micro controller to controll the LEDs on the robot. <br>
