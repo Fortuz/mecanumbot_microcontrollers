@@ -95,4 +95,10 @@ The layout of the robot control buttons on the RC100 controller can be seen belo
   <img src="https://github.com/Fortuz/mecanumbot_microcontrollers/blob/main/docs/images/RC100_button_layout.png" width="600" alt="Mecanumbot">
 </p>
 
+### OpenCR_Core_ROS2
+
+A minimal working example to use ROS2 in the communication and test out different functionalities.
+
 ### turtlebot3_mecanumbot
+
+In the same architecture as the turtlebot3 provides the functionality of a mecanum wheeled robot. The mecanumbot also mounted with 2 gripper motors and a neck motor. The gripper and neck motors (AX) are different from the driving motors (XM) which means an additional protol was needed to control them. The extra control table items and control functions are implemented in it. 
