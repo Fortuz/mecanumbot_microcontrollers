@@ -14,6 +14,7 @@ The robot can be controlled with the RC100 controller.
 
 - **Nano_LED**: Code for the Nano micro controller to controll the LEDs on the robot. <br>
 - **OpenCR_Core**: Code for a minimal RC100 remote control for the Mecanumbot. (No ROS2 included) <br>
+- **OpenCR_Core_ROS2** : Intermittent state between the Core and the final microcontroller. Implements two dynamixel slaves for the two types of motors. <br>
 - **turtlebot3_mecanumbot**: Modified version of the original Turtlebot3 microcontroller code to accomodate the Mecanumbot extended functionality (Not tested yet)
 
 ## Requirements
