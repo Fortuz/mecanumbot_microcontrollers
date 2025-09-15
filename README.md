@@ -107,4 +107,4 @@ A minimal working example to use ROS2 in the communication and test out differen
 
 ### turtlebot3_mecanumbot
 
-In the same architecture as the turtlebot3 provides the functionality of a mecanum wheeled robot. The mecanumbot also mounted with 2 gripper motors and a neck motor. The gripper and neck motors (AX) are different from the driving motors (XM) which means an additional protol was needed to control them. The extra control table items and control functions are implemented in it. 
+In the same architecture as the turtlebot3 provides the functionality of a mecanum wheeled robot. The mecanumbot also mounted with 2 gripper motors and a neck motor. The gripper and neck motors (AX) are different from the driving motors (XM) which means an additional protol was needed to control them. The extra control table items are added to the original control table and the new control functions for the AX motors are implemented in the camera_gimal_driver.h/.cpp. The code implements protocol switching directly, i.e. when the neck and grabber motors are being controlled the protocol gets switched to 1 (in accordance with the dynamixel documentation).  
