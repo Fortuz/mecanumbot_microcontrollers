@@ -37,6 +37,8 @@ private:
 	uint8_t id_left_ = 6;
 	uint8_t id_right_ = 5;
 
+	bool proto_is_v1_ = false;
+
 	void setProtoV1_();
 	void restoreProtoV2_();
 };

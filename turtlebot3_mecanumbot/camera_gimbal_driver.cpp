@@ -4,11 +4,15 @@ CameraGimbalDriver::CameraGimbalDriver(Dynamixel2Arduino &dxl_ref)
 	: dxl(dxl_ref) {}
 
 void CameraGimbalDriver::setProtoV1_() {
+	if (proto_is_v1_) return;
 	dxl.setPortProtocolVersion(AX_PROTOCOL_VERSION);
+	proto_is_v1_ = true;
 }
 
 void CameraGimbalDriver::restoreProtoV2_() {
+	if (!proto_is_v1_) return;
 	dxl.setPortProtocolVersion(XM_PROTOCOL_VERSION);
+	proto_is_v1_ = false;
 }
 
 bool CameraGimbalDriver::init() {
