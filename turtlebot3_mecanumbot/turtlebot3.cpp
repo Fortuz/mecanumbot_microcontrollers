@@ -90,6 +90,9 @@ const uint8_t ID_DXL_SLAVE = 200;              // Open CR ID
 const uint16_t MODEL_NUM_DXL_SLAVE = 0x5000;   // Open CR Model Number
 const float PROTOCOL_VERSION_DXL_SLAVE = 2.0;
 const uint32_t HEARTBEAT_TIMEOUT_MS = 500;
+// Poll AX (Protocol 1) present positions less frequently to avoid blocking
+// the main loop if occasional timeouts occur on the bus.
+const uint32_t AX_UPDATE_INTERVAL_MS = 100; // ms
 
 static void dxl_slave_write_callback_func(uint16_t addr, uint8_t &dxl_err_code, void* arg); // Which protocol?
 
@@ -272,26 +275,26 @@ void TurtleBot3Core::begin(const char* model_name)
   min_angular_velocity = -max_angular_velocity;
 
   bool ret; (void)ret;
-  DEBUG_SERIAL_BEGIN(57600);                    // TODO
-  DEBUG_PRINTLN(" ");
-  DEBUG_PRINTLN("Version : V221004R1");
-  DEBUG_PRINTLN("Begin Start...");
+  // DEBUG_SERIAL_BEGIN(57600);                    // TODO
+  // DEBUG_PRINTLN(" ");
+  // DEBUG_PRINTLN("Version : V221004R1");
+  // DEBUG_PRINTLN("Begin Start...");
 
   // Setting for Dynamixel motors
   ret = motor_driver.init();
-  DEBUG_PRINTLN(ret==true?"Motor driver setup completed.":"Motor driver setup failed.");
+  //DEBUG_PRINTLN(ret==true?"Motor driver setup completed.":"Motor driver setup failed.");
   // Setting for IMU
   ret = sensors.init();
-  DEBUG_PRINTLN(ret==true?"Sensors setup completed.":"Sensors setup failed.");
+  //DEBUG_PRINTLN(ret==true?"Sensors setup completed.":"Sensors setup failed.");
   // Init diagnosis
   ret = diagnosis.init();
-  DEBUG_PRINTLN(ret==true?"Diagnosis setup completed.":"Diagnosis setup failed.");
+  //DEBUG_PRINTLN(ret==true?"Diagnosis setup completed.":"Diagnosis setup failed.");
   // Setting for ROBOTIS RC100 remote controller and cmd_vel
   ret = controllers.init(max_linear_velocity, max_angular_velocity);
-  DEBUG_PRINTLN(ret==true?"RC100 Controller setup completed.":"RC100 Controller setup failed.");
+  //DEBUG_PRINTLN(ret==true?"RC100 Controller setup completed.":"RC100 Controller setup failed.");
 
-  DEBUG_PRINT("Dynamixel2Arduino Item Max : ");
-  DEBUG_PRINTLN(CONTROL_ITEM_MAX);
+  //DEBUG_PRINT("Dynamixel2Arduino Item Max : ");
+  //DEBUG_PRINTLN(CONTROL_ITEM_MAX);
 
   control_items.debug_mode = false;
   control_items.is_connect_ros2_node = false;
@@ -400,13 +403,13 @@ void TurtleBot3Core::begin(const char* model_name)
     motor_driver.set_torque(true);
     control_items.device_status = STATUS_RUNNING;
     set_connection_state_with_motors(true);
-    DEBUG_PRINTLN("Wheel motors are connected");
+    //DEBUG_PRINTLN("Wheel motors are connected");
   }else{
     control_items.device_status = STATUS_NOT_CONNECTED_MOTORS;
     set_connection_state_with_motors(false);
-    DEBUG_PRINTLN("Can't communicate with the motor!");
-    DEBUG_PRINTLN("  Please check the connection to the motor and the power supply.");
-    DEBUG_PRINTLN();
+    //DEBUG_PRINTLN("Can't communicate with the motor!");
+    //DEBUG_PRINTLN("  Please check the connection to the motor and the power supply.");
+    //DEBUG_PRINTLN();
   } 
   control_items.is_connect_motors = get_connection_state_with_motors();  
 
@@ -446,7 +449,7 @@ void TurtleBot3Core::begin(const char* model_name)
                                 0.0f, 0.0f, 0.0f);
   }
   else {
-    DEBUG_PRINTLN("Get connection state with motors returned with FALSE");
+    //DEBUG_PRINTLN("Get connection state with motors returned with FALSE");
   }
 
   // Brief AX motion at boot if connected (IDs: Neck=7, Left=6, Right=5)
@@ -467,7 +470,7 @@ void TurtleBot3Core::begin(const char* model_name)
     //ax_driver.setTorque(false); // disable torque after motion
   }
 
-  DEBUG_PRINTLN("Begin End...");
+  //DEBUG_PRINTLN("Begin End...");
 }
 
 /*******************************************************************************
@@ -506,8 +509,8 @@ void TurtleBot3Core::run()
   update_times(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_gpios(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
-  // Update AX (neck/grabbers) status into control table
-  update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+  // Update AX (neck/grabbers) status into control table at a lower rate
+  update_ax_motor_status(AX_UPDATE_INTERVAL_MS);
 
   update_battery_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_analog_sensors(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
@@ -641,6 +644,7 @@ void update_motor_status(uint32_t interval_ms)
 {
   static uint32_t pre_time;
   int16_t current_fl, current_fr, current_bl, current_br;
+  static uint32_t pre_time_torque = 0; // throttle torque polling
 
   if(millis() - pre_time >= interval_ms){
     pre_time = millis();
@@ -658,8 +662,11 @@ void update_motor_status(uint32_t interval_ms)
         control_items.present_current[MotorLocation::BACK_LEFT]   = current_bl;
         control_items.present_current[MotorLocation::BACK_RIGHT]  = current_br;
       }
-
-      control_items.motor_torque_enable_state = motor_driver.get_torque();
+      // Read torque state at most once per second to avoid 4 blocking reads every cycle
+      if (millis() - pre_time_torque >= 1000) {
+        pre_time_torque = millis();
+        control_items.motor_torque_enable_state = motor_driver.get_torque();
+      }
     }
   }  
 }
@@ -667,7 +674,7 @@ void update_motor_status(uint32_t interval_ms)
 void update_ax_motor_status(uint32_t interval_ms)
 {
     static uint32_t pre_time = 0;
-    if (millis() - pre_time >= INTERVAL_MS_TO_UPDATE_CONTROL_ITEM) {
+    if (millis() - pre_time >= interval_ms) {
       pre_time = millis();
       uint16_t p;
       if (get_connection_state_with_joints() == true) {
@@ -693,12 +700,12 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
       dxl_err_code = DXL_ERR_ACCESS;
       break;
 
-    case ADDR_DEBUG_MODE:
-      if (control_items.debug_mode == true)
-        DEBUG_PRINTLN("Debug Mode : Enabled");
-      else
-        DEBUG_PRINTLN("Debug Mode : Disabled");
-      break;
+    // case ADDR_DEBUG_MODE:
+    //   if (control_items.debug_mode == true)
+    //     //DEBUG_PRINTLN("Debug Mode : Enabled");
+    //   else
+    //     //DEBUG_PRINTLN("Debug Mode : Disabled");
+    //   break;
 
     case ADDR_SOUND:
       sensors.makeMelody(control_items.buzzer_sound);
