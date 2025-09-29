@@ -109,6 +109,10 @@ static void update_battery_status(uint32_t interval_ms);
 static void update_analog_sensors(uint32_t interval_ms);
 //static void update_joint_status(uint32_t interval_ms);
 
+// Writers scheduled per-protocol windows (20 ms each)
+static void process_ax_writes(uint32_t interval_ms);
+static void process_wheel_writes(uint32_t interval_ms);
+
 DYNAMIXEL::USBSerialPortHandler port_dxl_slave(SERIAL_DXL_SLAVE);
 DYNAMIXEL::Slave dxl_slave(port_dxl_slave, MODEL_NUM_DXL_SLAVE);
 //DYNAMIXEL::Slave dxl_slave_ax(port_dxl_slave, MODEL_NUM_AX_SLAVE);
@@ -252,6 +256,19 @@ typedef struct ControlItemVariables{
 }ControlItemVariables;
 
 static ControlItemVariables control_items;
+
+// Pending AX (Protocol 1.0) commands to be flushed during Proto-1 window
+struct AxPending {
+  bool torque_pending = false;
+  bool torque_on = false;
+  bool neck_pending = false;
+  uint16_t neck_goal = 0;
+  bool left_pending = false;
+  uint16_t left_goal = 0;
+  bool right_pending = false;
+  uint16_t right_goal = 0;
+};
+static AxPending ax_pending;
 
 
 /*******************************************************************************
@@ -509,15 +526,17 @@ void TurtleBot3Core::run()
   update_imu(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_times(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
   update_gpios(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
-  
-  if (switcher_ax_motors == false)
-  {
-    update_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM); //20ms
-    switcher_ax_motors = true;  
-  }
-  else
-  {
-    update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM); //20ms
+
+  // Alternate 20 ms protocol windows: Proto2 (XM/wheels) <-> Proto1 (AX/joints)
+  if (switcher_ax_motors == false) {
+    // Protocol 2.0 window: wheel XM motors
+    process_wheel_writes(INTERVAL_MS_TO_CONTROL_MOTOR);
+    update_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+    switcher_ax_motors = true;
+  } else {
+    // Protocol 1.0 window: AX-12 (neck/grabbers)
+    process_ax_writes(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+    update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
     switcher_ax_motors = false;
   }
   
@@ -530,18 +549,7 @@ void TurtleBot3Core::run()
   // Packet processing with ROS2 Node.
   dxl_slave.processPacket();
 
-  /* For controlling DYNAMIXEL motors (Wheels) */  
-  if (millis()-pre_time_to_control_motor >= INTERVAL_MS_TO_CONTROL_MOTOR)
-  {
-    pre_time_to_control_motor = millis();
-    if(get_connection_state_with_ros2_node() == false){
-      memset(goal_velocity_from_cmd, 0, sizeof(goal_velocity_from_cmd));
-    }
-    update_goal_velocity_from_3values();
-    if(get_connection_state_with_motors() == true){
-      motor_driver.control_motors(p_tb3_model_info->wheel_separation_x, p_tb3_model_info->wheel_separation_y, goal_velocity[VelocityType::LINEAR_X], goal_velocity[VelocityType::LINEAR_Y], goal_velocity[VelocityType::ANGULAR]); // TODO: Wheel radius
-    }
-  }  
+  // Wheel writes are handled in the Protocol 2.0 window by process_wheel_writes()
 }
 
 
@@ -758,22 +766,79 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
     // AX motors control via slave table
     // 7 - Neck, 6 - Left Grabber, 5 - Right Grabber
     case AX_ADDR_TORQUE:
-      ax_driver.setTorque(control_items.ax_torque_enable_state);
+      // Buffer torque change; apply in Protocol 1 window
+      ax_pending.torque_on = control_items.ax_torque_enable_state;
+      ax_pending.torque_pending = true;
       break;
-    case AX_ADDR_NECK_GOAL:
-      control_items.ax_neck_goal = constrain(control_items.ax_neck_goal, 200, 860);
-      ax_driver.writeGoal(7, (uint16_t)control_items.ax_neck_goal);
+    case AX_ADDR_NECK_GOAL: {
+      // Constrain and buffer; apply in Protocol 1 window
+      int32_t v = constrain(control_items.ax_neck_goal, 200, 860);
+      control_items.ax_neck_goal = v;
+      ax_pending.neck_goal = (uint16_t)v;
+      ax_pending.neck_pending = true;
       break;
-    case AX_ADDR_GRABBER_LEFT_GOAL:
-      control_items.ax_grab_left_goal = constrain(control_items.ax_grab_left_goal, 160, 854);
-      ax_driver.writeGoal(6, (uint16_t)control_items.ax_grab_left_goal);
+    }
+    case AX_ADDR_GRABBER_LEFT_GOAL: {
+      int32_t v = constrain(control_items.ax_grab_left_goal, 160, 854);
+      control_items.ax_grab_left_goal = v;
+      ax_pending.left_goal = (uint16_t)v;
+      ax_pending.left_pending = true;
       break;
-    case AX_ADDR_GRABBER_RIGHT_GOAL:
-      control_items.ax_grab_right_goal = constrain(control_items.ax_grab_right_goal, 160, 854);
-      ax_driver.writeGoal(5, (uint16_t)control_items.ax_grab_right_goal);
+    }
+    case AX_ADDR_GRABBER_RIGHT_GOAL: {
+      int32_t v = constrain(control_items.ax_grab_right_goal, 160, 854);
+      control_items.ax_grab_right_goal = v;
+      ax_pending.right_goal = (uint16_t)v;
+      ax_pending.right_pending = true;
       break;
+    }
   }
       
+}
+
+// Apply buffered AX writes within the Protocol 1.0 window at most once per interval
+static void process_ax_writes(uint32_t interval_ms)
+{
+  static uint32_t pre_time = 0;
+  if (millis() - pre_time < interval_ms) return;
+  pre_time = millis();
+
+  if (!get_connection_state_with_joints()) return;
+
+  // Apply pending torque first to ensure safe motion
+  if (ax_pending.torque_pending) {
+    ax_driver.setTorque(ax_pending.torque_on);
+    ax_pending.torque_pending = false;
+  }
+  // Apply goals if pending
+  if (ax_pending.neck_pending) {
+    ax_driver.writeGoal(7, ax_pending.neck_goal);
+    ax_pending.neck_pending = false;
+  }
+  if (ax_pending.left_pending) {
+    ax_driver.writeGoal(6, ax_pending.left_goal);
+    ax_pending.left_pending = false;
+  }
+  if (ax_pending.right_pending) {
+    ax_driver.writeGoal(5, ax_pending.right_goal);
+    ax_pending.right_pending = false;
+  }
+}
+
+// Handle wheel control writes within the Protocol 2.0 window at most once per interval
+static void process_wheel_writes(uint32_t interval_ms)
+{
+  static uint32_t pre_time = 0;
+  if (millis() - pre_time < interval_ms) return;
+  pre_time = millis();
+
+  if(get_connection_state_with_ros2_node() == false){
+    memset(goal_velocity_from_cmd, 0, sizeof(goal_velocity_from_cmd));
+  }
+  update_goal_velocity_from_3values();
+  if(get_connection_state_with_motors() == true){
+    motor_driver.control_motors(p_tb3_model_info->wheel_separation_x, p_tb3_model_info->wheel_separation_y, goal_velocity[VelocityType::LINEAR_X], goal_velocity[VelocityType::LINEAR_Y], goal_velocity[VelocityType::ANGULAR]);
+  }
 }
 
 
