@@ -186,10 +186,11 @@ enum ControlTableItemAddr{
   ADDR_CMD_VEL_ANGULAR_X  = 182,
   ADDR_CMD_VEL_ANGULAR_Y  = 186,
   ADDR_CMD_VEL_ANGULAR_Z  = 190,
-  ADDR_PROFILE_ACC_FL      = 194,
-  ADDR_PROFILE_ACC_FR      = 198,
-  ADDR_PROFILE_ACC_BL      = 202,
-  ADDR_PROFILE_ACC_BR      = 206,
+  ADDR_PROFILE_ACC_BL      = 194,
+  ADDR_PROFILE_ACC_BR      = 198,
+  ADDR_PROFILE_ACC_FL      = 202,
+  ADDR_PROFILE_ACC_FR      = 206,
+  
 
   // AX motors for manipulator and camera
   AX_ADDR_TORQUE = 210,
@@ -759,11 +760,12 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
     case ADDR_CMD_VEL_ANGULAR_Z:
       goal_velocity_from_cmd[VelocityType::ANGULAR] = constrain((float)(control_items.cmd_vel_angular[2]*0.01f), min_angular_velocity, max_angular_velocity);
       break;            
-
-    case ADDR_PROFILE_ACC_FL:
-    case ADDR_PROFILE_ACC_FR:
+    
     case ADDR_PROFILE_ACC_BL:
     case ADDR_PROFILE_ACC_BR:
+    case ADDR_PROFILE_ACC_FL:
+    case ADDR_PROFILE_ACC_FR:
+    
       if(get_connection_state_with_motors() == true)
         motor_driver.write_profile_acceleration(control_items.profile_acceleration[MotorLocation::FRONT_RIGHT], control_items.profile_acceleration[MotorLocation::FRONT_LEFT], control_items.profile_acceleration[MotorLocation::BACK_RIGHT], control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
       break;        
