@@ -435,7 +435,7 @@ void TurtleBot3Core::begin(const char* model_name)
   if (ax_driver.is_connected()) {
     set_connection_state_with_joints(true);
     control_items.is_connect_manipulator = true;
-    ax_driver.setTorque(true);
+    ax_driver.setTorqueInit(true);
   }
 
   // Init IMU 
@@ -471,6 +471,7 @@ void TurtleBot3Core::begin(const char* model_name)
 
   // Brief AX motion at boot if connected (IDs: Neck=7, Left=6, Right=5)
   if (get_connection_state_with_joints()) {
+    ax_driver.setProtoV1_(); // switch to Protocol 1.0
     const uint16_t center = 800; // ~0 degrees
     const uint16_t d90deg = 90; // ~90 degrees
     // Neck nod
@@ -485,6 +486,7 @@ void TurtleBot3Core::begin(const char* model_name)
     //delay(600);
 
     //ax_driver.setTorque(false); // disable torque after motion
+    ax_driver.restoreProtoV2_(); // switch back to Protocol 2.0
   }
 
   //DEBUG_PRINTLN("Begin End...");
@@ -535,9 +537,12 @@ void TurtleBot3Core::run()
     switcher_ax_motors = true;
   } else {
     // Protocol 1.0 window: AX-12 (neck/grabbers)
-    process_ax_writes(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
+    //setProtoV1_();
+    ax_driver.setProtoV1_();
+    process_ax_writes(INTERVAL_MS_TO_CONTROL_MOTOR);
     update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
     switcher_ax_motors = false;
+    ax_driver.restoreProtoV2_();
   }
   
 

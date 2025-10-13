@@ -17,8 +17,12 @@ public:
 	bool is_connected();
 
 	bool setTorque(bool on);
+	bool setTorqueInit(bool on);
 	bool writeGoal(uint8_t id, uint16_t pos);
 	bool readPresent(uint8_t id, uint16_t &pos);
+
+	void setProtoV1_();
+	void restoreProtoV2_();
 
 private:
 	// AX-12A (Protocol 1.0) control table
@@ -39,8 +43,7 @@ private:
 
 	bool proto_is_v1_ = false;
 
-	void setProtoV1_();
-	void restoreProtoV2_();
+	
 };
 
 #endif // CAMERA_GIMBAL_DRIVER_H_
