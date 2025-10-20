@@ -80,8 +80,9 @@ bool CameraGimbalDriver::writeGoal(uint8_t id, uint16_t pos) {
 	if (!inited_) return false;
 	//setProtoV1_();
 	uint16_t p = pos; // little-endian on AVR/ARM
+	uint32_t timeout = 10; // timeout in ms
     // writes 2 bytes to goal position register of specified motor: returns true on success
-	bool ok = dxl.write(id, AX_REG_GOAL_POSITION, (uint8_t*)&p, sizeof(p), 10);
+	bool ok = dxl.write(id, AX_REG_GOAL_POSITION, (uint8_t*)&p, sizeof(p), timeout);
 	//restoreProtoV2_();
 	return ok;
 }
@@ -92,7 +93,8 @@ bool CameraGimbalDriver::readPresent(uint8_t id, uint16_t &pos) {
 	//setProtoV1_();
 	// addr_length = 1 for Protocol 1.0 (AX series), data length = 2 bytes
     // reads 2 bytes from present position register of specified motor: returns true on success
-	int32_t nread = dxl.read(id, AX_REG_PRESENT_POSITION, 2, (uint8_t *)&value, sizeof(value), 10);
+	uint32_t timeout = 10; // timeout in ms
+	int32_t nread = dxl.read(id, AX_REG_PRESENT_POSITION, (uint16_t)2, (uint8_t *)&value, sizeof(value), timeout);
 	//restoreProtoV2_();
     // if 2 bytes can be read, copy to output parameter
 	if (nread == (int32_t)sizeof(value)) pos = value;
