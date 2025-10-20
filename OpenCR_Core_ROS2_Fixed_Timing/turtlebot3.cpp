@@ -761,14 +761,14 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
       goal_velocity_from_cmd[VelocityType::ANGULAR] = constrain((float)(control_items.cmd_vel_angular[2]*0.01f), min_angular_velocity, max_angular_velocity);
       break;            
     
-    case ADDR_PROFILE_ACC_BL:
-    case ADDR_PROFILE_ACC_BR:
-    case ADDR_PROFILE_ACC_FL:
-    case ADDR_PROFILE_ACC_FR:
+    // case ADDR_PROFILE_ACC_BL:
+    // case ADDR_PROFILE_ACC_BR:
+    // case ADDR_PROFILE_ACC_FL:
+    // case ADDR_PROFILE_ACC_FR:
     
-      if(get_connection_state_with_motors() == true)
-        motor_driver.write_profile_acceleration(control_items.profile_acceleration[MotorLocation::FRONT_RIGHT], control_items.profile_acceleration[MotorLocation::FRONT_LEFT], control_items.profile_acceleration[MotorLocation::BACK_RIGHT], control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
-      break;        
+    //   if(get_connection_state_with_motors() == true)
+    //     motor_driver.write_profile_acceleration(control_items.profile_acceleration[MotorLocation::FRONT_RIGHT], control_items.profile_acceleration[MotorLocation::FRONT_LEFT], control_items.profile_acceleration[MotorLocation::BACK_RIGHT], control_items.profile_acceleration[MotorLocation::BACK_LEFT]);
+    //   break;        
 
     // AX motors control via slave table
     // 7 - Neck, 6 - Left Grabber, 5 - Right Grabber

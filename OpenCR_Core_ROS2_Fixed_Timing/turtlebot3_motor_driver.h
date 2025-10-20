@@ -43,22 +43,34 @@ class Turtlebot3MotorDriver
   Turtlebot3MotorDriver();  
   ~Turtlebot3MotorDriver();
   
+  //being called
   bool init(void);
+  //being called
   void close(void);
 
+  //being called
   bool is_connected();
 
+  //being called
   bool set_torque(bool onoff);
+  //being called
   bool get_torque();
   
+  //being called
   bool read_present_position(int32_t &back_left_value, int32_t &back_right_value, int32_t &front_left_value, int32_t &front_right_value);
+  //being called
   bool read_present_velocity(int32_t &back_left_value, int32_t &back_right_value, int32_t &front_left_value, int32_t &front_right_value);
+  //being called
   bool read_present_current(int16_t &back_left_value, int16_t &back_right_value, int16_t &front_left_value, int16_t &front_right_value);
+  //not being called
   bool read_profile_acceleration(uint32_t &back_left_value, uint32_t &back_right_value, uint32_t &front_left_value, uint32_t &front_right_value);
-  
+
+  //not being called
   bool write_velocity(int32_t back_left_value, int32_t back_right_value, int32_t front_left_value, int32_t front_right_value);
+  //being called
   bool write_profile_acceleration(uint32_t back_left_value, uint32_t back_right_value, uint32_t front_left_value, uint32_t front_right_value);
 
+  //being called
   bool control_motors(const float wheel_separation_x, const float wheel_separation_y, float linear_x_value, float linear_y_value, float angular_value);
 
   Dynamixel2Arduino& getDxl();
