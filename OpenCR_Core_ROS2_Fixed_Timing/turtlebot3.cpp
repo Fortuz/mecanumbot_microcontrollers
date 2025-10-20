@@ -779,21 +779,21 @@ static void dxl_slave_write_callback_func(uint16_t item_addr, uint8_t &dxl_err_c
       break;
     case AX_ADDR_NECK_GOAL: {
       // Constrain and buffer; apply in Protocol 1 window
-      int32_t v = constrain(control_items.ax_neck_goal, 200, 860);
+      int16_t v = constrain(control_items.ax_neck_goal, 200, 860);
       control_items.ax_neck_goal = v;
       ax_pending.neck_goal = (uint16_t)v;
       ax_pending.neck_pending = true;
       break;
     }
     case AX_ADDR_GRABBER_LEFT_GOAL: {
-      int32_t v = constrain(control_items.ax_grab_left_goal, 160, 854);
+      int16_t v = constrain(control_items.ax_grab_left_goal, 160, 854);
       control_items.ax_grab_left_goal = v;
       ax_pending.left_goal = (uint16_t)v;
       ax_pending.left_pending = true;
       break;
     }
     case AX_ADDR_GRABBER_RIGHT_GOAL: {
-      int32_t v = constrain(control_items.ax_grab_right_goal, 160, 854);
+      int16_t v = constrain(control_items.ax_grab_right_goal, 160, 854);
       control_items.ax_grab_right_goal = v;
       ax_pending.right_goal = (uint16_t)v;
       ax_pending.right_pending = true;
