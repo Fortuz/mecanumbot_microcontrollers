@@ -7,6 +7,8 @@ dynamixel::PacketHandler *packetHandlerXM = nullptr;
 dynamixel::GroupSyncWrite *groupSyncWriteXM = nullptr;
 dynamixel::GroupSyncWrite *groupSyncWriteAX = nullptr;
 
+//Declaration for sensors
+static MecanumbotSensor sensors;
 
 void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA) { 
   uint8_t dxl_error;
@@ -140,16 +142,56 @@ void MecanumbotCore::begin() {
     // Test the motors
     initializeMotors();
 
-    // Wait a second for everything to settle
+    // Initialize sensors
+    sensors.init();
+
+    sensors.initIMU();
+    sensors.calibrationGyro();
     delay(1000);
 
+    // After a while insanely fucking irritating
+    //sensors.makeMelody(6);  // Play Für Elise
+
+    // Wait a second for everything to settle
 }
 
+struct __attribute__((packed)) SensorData {
+    //goal velocities for wheels  
+    int16_t vel_BL = 1;
+    int16_t vel_BR = 2;
+    int16_t vel_FL = 3;
+    int16_t vel_FR = 4;
+    //goal positions for neck and grabbers
+    int16_t pos_N = 5;
+    int16_t pos_GL = 6;
+    int16_t pos_GR = 7;
+    //sensory data
+    float voltage = 0.8;
+    //IMU data
+    float imu_angular_vel_x = 0.9;
+    float imu_angular_vel_y = 0.10;
+    float imu_angular_vel_z = 0.11;
+    float imu_linear_acc_x = 0.12;
+    float imu_linear_acc_y = 0.13;
+    float imu_linear_acc_z = 0.14;
+    float imu_magnetic_x = 0.15;
+    float imu_magnetic_y = 0.16;
+    float imu_magnetic_z = 0.17;
+    float orientation_w = 0.18;
+    float orientation_x = 0.19;
+    float orientation_y = 0.20;
+    float orientation_z = 0.21;
+};
+
+SensorData sensorData;
+
 struct ControlData {
+  //goal velocities for wheels  
   int16_t vel_BL = 0;
   int16_t vel_BR = 0;
   int16_t vel_FL = 0;
   int16_t vel_FR = 0;
+  //goal positions for neck and grabbers
   int16_t pos_N = 0;
   int16_t pos_GL = 0;
   int16_t pos_GR = 0;
@@ -161,6 +203,8 @@ const int controlDataSize = sizeof(ControlData);
 
 void MecanumbotCore::run() {
     //Serial.println(portHandler->getPortName());
+    sensors.updateIMU();
+    sensors.onMelody();
 
     if (Serial.available() > 0)
     {
@@ -172,8 +216,38 @@ void MecanumbotCore::run() {
 
         // Print the contents of controlData on serial as a struct
         // This sends the raw binary data of the struct, not text
-        
+
+        //update sensor data
+        sensorData.vel_BL = controlData.vel_BL;
+        sensorData.vel_BR = controlData.vel_BR;
+        sensorData.vel_FL = controlData.vel_FL;
+        sensorData.vel_FR = controlData.vel_FR;
+        sensorData.pos_N = controlData.pos_N;
+        sensorData.pos_GL = controlData.pos_GL;
+        sensorData.pos_GR = controlData.pos_GR;
+
     }
-    
-    Serial.write((uint8_t*)&controlData, sizeof(controlData));
+    sensorData.voltage = sensors.checkVoltage();
+
+    float* tmp;
+
+    tmp = sensors.getImuAngularVelocity(); //static float angular_vel[3];
+    sensorData.imu_angular_vel_x = tmp[0];
+    sensorData.imu_angular_vel_y = tmp[1];
+    sensorData.imu_angular_vel_z = tmp[2];
+    tmp = sensors.getImuLinearAcc(); // static float linear_acc[3];
+    sensorData.imu_linear_acc_x = tmp[0];
+    sensorData.imu_linear_acc_y = tmp[1];
+    sensorData.imu_linear_acc_z = tmp[2];
+    tmp = sensors.getImuMagnetic(); // static float magnetic[3];
+    sensorData.imu_magnetic_x = tmp[0];
+    sensorData.imu_magnetic_y = tmp[1];
+    sensorData.imu_magnetic_z = tmp[2];
+    tmp = sensors.getOrientation(); // static float orientation[4];
+    sensorData.orientation_w = tmp[0];
+    sensorData.orientation_x = tmp[1];
+    sensorData.orientation_y = tmp[2];
+    sensorData.orientation_z = tmp[3];
+
+    Serial.write((uint8_t*)&sensorData, sizeof(sensorData));
 }

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <DynamixelSDK.h>
+#include "mecanumbot_sensor.h"
 
 #define DEVICENAME               "OpenCR_DXL_Port"  // For OpenCR
 #define BAUDRATE                 1000000
