@@ -127,6 +127,9 @@ void initDXLConnection() {
     }
 }
 
+//--- MecanumbotCore class methods ---
+
+// The setup method, initialises everything
 void MecanumbotCore::begin() {
 
     portHandler       = dynamixel::PortHandler::getPortHandler(DEVICENAME);
@@ -155,6 +158,7 @@ void MecanumbotCore::begin() {
     // Wait a second for everything to settle
 }
 
+// Sensor data structure, "should" contains every information that the ROS2 host needs
 struct __attribute__((packed)) SensorData {
     //goal velocities for wheels  
     int16_t vel_BL = 0;
@@ -188,6 +192,7 @@ SensorData sensorData;
 // CRC8 (poly 0x07) for packet integrity
 static uint8_t crc8_ccitt(const uint8_t *data, size_t len)
 {
+  //crc bit
   uint8_t crc = 0x00;
   while (len--) {
     crc ^= *data++;
@@ -260,7 +265,7 @@ void MecanumbotCore::run() {
     sensorData.voltage = sensors.checkVoltage();
 
     float* tmp;
-
+    // IMU data --> sensorData
     tmp = sensors.getImuAngularVelocity(); //static float angular_vel[3];
     sensorData.imu_angular_vel_x = tmp[0];
     sensorData.imu_angular_vel_y = tmp[1];
