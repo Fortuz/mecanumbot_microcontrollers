@@ -17,9 +17,9 @@
 #include "turtlebot3_motor_driver.h"
 
 // Limit values (XM430-W210-T and XM430-W350-T)
-// MAX RPM is 77 when DXL is powered 12.0V
-// 77 / 0.229 (RPM) = 336.24454...
-const uint16_t LIMIT_MAX_VELOCITY = 337; 
+// MAX RPM is 46 when DXL is powered 12.0V
+// 46 / 0.229 (RPM) = 200.8748...
+const uint16_t LIMIT_MAX_VELOCITY = 201; 
 // V = r * w = r     *        (RPM             * 0.10472)
 //           = 0.033 * (0.229 * Goal_Velocity) * 0.10472
 // Goal_Velocity = V * 1263.632956882

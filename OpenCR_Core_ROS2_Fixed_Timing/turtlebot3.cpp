@@ -542,8 +542,8 @@ void TurtleBot3Core::run()
     ax_driver.setProtoV1_();
     process_ax_writes(INTERVAL_MS_TO_CONTROL_MOTOR);
     update_ax_motor_status(INTERVAL_MS_TO_UPDATE_CONTROL_ITEM);
-    switcher_ax_motors = false;
     ax_driver.restoreProtoV2_();
+    switcher_ax_motors = false;
   }
   
 
