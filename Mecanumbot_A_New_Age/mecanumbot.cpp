@@ -157,35 +157,61 @@ void MecanumbotCore::begin() {
 
 struct __attribute__((packed)) SensorData {
     //goal velocities for wheels  
-    int16_t vel_BL = 1;
-    int16_t vel_BR = 2;
-    int16_t vel_FL = 3;
-    int16_t vel_FR = 4;
+    int16_t vel_BL = 0;
+    int16_t vel_BR = 0;
+    int16_t vel_FL = 0;
+    int16_t vel_FR = 0;
     //goal positions for neck and grabbers
-    int16_t pos_N = 5;
-    int16_t pos_GL = 6;
-    int16_t pos_GR = 7;
+    int16_t pos_N = 0;
+    int16_t pos_GL = 0;
+    int16_t pos_GR = 0;
     //sensory data
-    float voltage = 0.8;
+    float voltage = 0.0;
     //IMU data
-    float imu_angular_vel_x = 0.9;
-    float imu_angular_vel_y = 0.10;
-    float imu_angular_vel_z = 0.11;
-    float imu_linear_acc_x = 0.12;
-    float imu_linear_acc_y = 0.13;
-    float imu_linear_acc_z = 0.14;
-    float imu_magnetic_x = 0.15;
-    float imu_magnetic_y = 0.16;
-    float imu_magnetic_z = 0.17;
-    float orientation_w = 0.18;
-    float orientation_x = 0.19;
-    float orientation_y = 0.20;
-    float orientation_z = 0.21;
+    float imu_angular_vel_x = 0.0;
+    float imu_angular_vel_y = 0.0;
+    float imu_angular_vel_z = 0.0;
+    float imu_linear_acc_x = 0.0;
+    float imu_linear_acc_y = 0.0;
+    float imu_linear_acc_z = 0.0;
+    float imu_magnetic_x = 0.0;
+    float imu_magnetic_y = 0.0;
+    float imu_magnetic_z = 0.0;
+    float orientation_w = 0.0;
+    float orientation_x = 0.0;
+    float orientation_y = 0.0;
+    float orientation_z = 0.0;
 };
 
 SensorData sensorData;
 
-struct ControlData {
+// CRC8 (poly 0x07) for packet integrity
+static uint8_t crc8_ccitt(const uint8_t *data, size_t len)
+{
+  uint8_t crc = 0x00;
+  while (len--) {
+    crc ^= *data++;
+    for (uint8_t i = 0; i < 8; ++i) {
+      if (crc & 0x80)
+        crc = (uint8_t)((crc << 1) ^ 0x07);
+      else
+        crc <<= 1;
+    }
+  }
+  return crc;
+}
+
+// Packet format sent to host: magic(2) + seq(1) + payload(SensorData) + crc(1)
+struct __attribute__((packed)) SensorPacket {
+  uint16_t magic;
+  uint8_t seq;
+  SensorData payload;
+  uint8_t crc;
+};
+
+static uint8_t sensor_seq_counter = 0;
+
+struct __attribute__((packed)) ControlData {
   //goal velocities for wheels  
   int16_t vel_BL = 0;
   int16_t vel_BR = 0;
@@ -206,27 +232,31 @@ void MecanumbotCore::run() {
     sensors.updateIMU();
     sensors.onMelody();
 
-    if (Serial.available() > 0)
+  // Only read control packet if full struct is available to avoid partial/shifted reads
+  if (Serial.available() >= controlDataSize)
+  {
+    size_t bytesRead = Serial.readBytes((char*)&controlData, controlDataSize);
+    if (bytesRead == controlDataSize)
     {
-        Serial.readBytes((char*)&controlData, controlDataSize);
-        //TODO: Add constraints
-        //TODO: calculate checksum and verify the message
-        set_WheelVelocities(controlData.vel_BL, controlData.vel_BR, controlData.vel_FL, controlData.vel_FR);
-        set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
+      // Simple processing of control packet
+      set_WheelVelocities(controlData.vel_BL, controlData.vel_BR, controlData.vel_FL, controlData.vel_FR);
+      set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
 
-        // Print the contents of controlData on serial as a struct
-        // This sends the raw binary data of the struct, not text
-
-        //update sensor data
-        sensorData.vel_BL = controlData.vel_BL;
-        sensorData.vel_BR = controlData.vel_BR;
-        sensorData.vel_FL = controlData.vel_FL;
-        sensorData.vel_FR = controlData.vel_FR;
-        sensorData.pos_N = controlData.pos_N;
-        sensorData.pos_GL = controlData.pos_GL;
-        sensorData.pos_GR = controlData.pos_GR;
-
+      // Mirror control into sensorData for host visibility
+      sensorData.vel_BL = controlData.vel_BL;
+      sensorData.vel_BR = controlData.vel_BR;
+      sensorData.vel_FL = controlData.vel_FL;
+      sensorData.vel_FR = controlData.vel_FR;
+      sensorData.pos_N = controlData.pos_N;
+      sensorData.pos_GL = controlData.pos_GL;
+      sensorData.pos_GR = controlData.pos_GR;
     }
+    else
+    {
+      // Partial/failed read -- discard remaining bytes to resync
+      while (Serial.available()) Serial.read();
+    }
+  }
     sensorData.voltage = sensors.checkVoltage();
 
     float* tmp;
@@ -249,5 +279,11 @@ void MecanumbotCore::run() {
     sensorData.orientation_y = tmp[2];
     sensorData.orientation_z = tmp[3];
 
-    Serial.write((uint8_t*)&sensorData, sizeof(sensorData));
+  // Send sensor packet with magic, sequence and CRC so the host can reliably resync
+  SensorPacket pkt;
+  pkt.magic = 0xAA55; // Magic number, very low probability of occurring randomly
+  pkt.seq = sensor_seq_counter++;
+  pkt.payload = sensorData;
+  pkt.crc = crc8_ccitt((const uint8_t*)&pkt, sizeof(pkt) - 1);
+  Serial.write((const uint8_t*)&pkt, sizeof(pkt));
 }
