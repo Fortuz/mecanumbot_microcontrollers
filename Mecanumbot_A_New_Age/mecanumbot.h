@@ -56,12 +56,18 @@
 #define XM_ADDR_GOAL_VELOCITY       104 // RW
 #define XM_ADDR_PRESENT_VELOCITY    128 // R
 #define XM_ADDR_PRESENT_TEMPERATURE 128 // R
-
+#define XM_ADDR_PRESENT_CURRENT     126 // R
+#define XM_ADDR_PRESENT_POSITION    132 // R
+#define XM_ADDR_PROFILE_ACCELERATION 108  // XM motors can estimate this if enabled
 
 #define XM_PROTOCOL_VERSION         2.0
 
 #define XM_VELOCITY_VALUE           200 
 #define XM_LEN_GOAL_VELOCITY        4
+#define XM_LEN_PRESENT_VELOCITY     4
+#define XM_LEN_PRESENT_CURRENT      2
+#define XM_LEN_PRESENT_POSITION     4
+#define XM_LEN_PROFILRE_ACCELERATION 4
 #define XM_NUM_MOTORS               4
 
 #define XM_VELOCITY_MODE            1

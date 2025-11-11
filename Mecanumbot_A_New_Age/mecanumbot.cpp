@@ -24,6 +24,92 @@ void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t 
   }
 }
 
+void read_WheelSensorData(SensorData &sensorData) {
+  // Create GroupSyncRead for each type of data
+  dynamixel::GroupSyncRead groupReadVelocity(portHandler, packetHandlerXM, XM_ADDR_PRESENT_VELOCITY, XM_LEN_PRESENT_VELOCITY);
+  dynamixel::GroupSyncRead groupReadPosition(portHandler, packetHandlerXM, XM_ADDR_PRESENT_POSITION, XM_LEN_PRESENT_POSITION);
+  dynamixel::GroupSyncRead groupReadCurrent(portHandler, packetHandlerXM, XM_ADDR_PRESENT_CURRENT, XM_LEN_PRESENT_CURRENT);
+  dynamixel::GroupSyncRead groupReadAccel(portHandler, packetHandlerXM, XM_ADDR_PROFILE_ACCELERATION, XM_LEN_PROFILRE_ACCELERATION);
+
+  // Add motor IDs
+  uint8_t ids[] = {ID_WHEEL_BL, ID_WHEEL_BR, ID_WHEEL_FL, ID_WHEEL_FR};
+  for (uint8_t id : ids) {
+    groupReadVelocity.addParam(id);
+    groupReadPosition.addParam(id);
+    groupReadCurrent.addParam(id);
+    groupReadAccel.addParam(id);
+  }
+
+  // Read present velocities
+  groupReadVelocity.txRxPacket();
+  groupReadPosition.txRxPacket();
+  groupReadCurrent.txRxPacket();
+  groupReadAccel.txRxPacket();
+
+  // Helper lambda to safely extract 4-byte values
+  auto get4B = [](dynamixel::GroupSyncRead &gr, uint8_t id) {
+    return (int32_t)(
+      (gr.getData(id, 0, 4)) |
+      (gr.getData(id, 1, 4) << 8) |
+      (gr.getData(id, 2, 4) << 16) |
+      (gr.getData(id, 3, 4) << 24)
+    );
+  };
+
+  // Helper lambda for 2-byte current
+  auto get2B = [](dynamixel::GroupSyncRead &gr, uint8_t id) {
+    return (int16_t)(
+      (gr.getData(id, 0, 2)) |
+      (gr.getData(id, 1, 2) << 8)
+    );
+  };
+
+  // Assign to struct (example: use velocity fields for measured velocity)
+  int32_t vel_BL = get4B(groupReadVelocity, ID_WHEEL_BL);
+  int32_t vel_BR = get4B(groupReadVelocity, ID_WHEEL_BR);
+  int32_t vel_FL = get4B(groupReadVelocity, ID_WHEEL_FL);
+  int32_t vel_FR = get4B(groupReadVelocity, ID_WHEEL_FR);
+  // Positions
+  int32_t pos_BL = get4B(groupReadPosition, ID_WHEEL_BL);
+  int32_t pos_BR = get4B(groupReadPosition, ID_WHEEL_BR); 
+  int32_t pos_FL = get4B(groupReadPosition, ID_WHEEL_FL);
+  int32_t pos_FR = get4B(groupReadPosition, ID_WHEEL_FR);
+  // Currents
+  int16_t curr_BL = get2B(groupReadCurrent, ID_WHEEL_BL);
+  int16_t curr_BR = get2B(groupReadCurrent, ID_WHEEL_BR);
+  int16_t curr_FL = get2B(groupReadCurrent, ID_WHEEL_FL);
+  int16_t curr_FR = get2B(groupReadCurrent, ID_WHEEL_FR);
+  // Accelerations
+  int32_t acc_BL = get4B(groupReadAccel, ID_WHEEL_BL);
+  int32_t acc_BR = get4B(groupReadAccel, ID_WHEEL_BR);
+  int32_t acc_FL = get4B(groupReadAccel, ID_WHEEL_FL);
+  int32_t acc_FR = get4B(groupReadAccel, ID_WHEEL_FR);
+
+  // Optional: print or store for debugging
+  sensorData.vel_BL = vel_BL;
+  sensorData.vel_BR = vel_BR;
+  sensorData.vel_FL = vel_FL;   
+  sensorData.vel_FR = vel_FR;
+  sensorData.pos_BL = pos_BL;
+  sensorData.pos_BR = pos_BR;
+  sensorData.pos_FL = pos_FL;
+  sensorData.pos_FR = pos_FR;
+  sensorData.curr_BL = curr_BL;
+  sensorData.curr_BR = curr_BR;
+  sensorData.curr_FL = curr_FL;
+  sensorData.curr_FR = curr_FR;
+  sensorData.acc_BL = acc_BL;
+  sensorData.acc_BR = acc_BR;
+  sensorData.acc_FL = acc_FL;
+  sensorData.acc_FR = acc_FR;
+    
+
+  groupReadVelocity.clearParam();
+  groupReadPosition.clearParam();
+  groupReadCurrent.clearParam();
+  groupReadAccel.clearParam();
+}
+
 void set_WheelVelocities(int32_t vBL, int32_t vBR, int32_t vFL, int32_t vFR) {
   uint8_t param_goal_velocity_BL[4] = {
     DXL_LOBYTE(DXL_LOWORD(vBL)),
@@ -161,10 +247,30 @@ void MecanumbotCore::begin() {
 // Sensor data structure, "should" contains every information that the ROS2 host needs
 struct __attribute__((packed)) SensorData {
     //goal velocities for wheels  
+    int16_t cmd_vel_BL = 0;
+    int16_t cmd_vel_BR = 0;
+    int16_t cmd_vel_FL = 0;
+    int16_t cmd_vel_FR = 0;
+    //measured velocities for wheels
     int16_t vel_BL = 0;
     int16_t vel_BR = 0;
     int16_t vel_FL = 0;
     int16_t vel_FR = 0;
+    //measured positions for wheels
+    int16_t pos_BL = 0;
+    int16_t pos_BR = 0;
+    int16_t pos_FL = 0;
+    int16_t pos_FR = 0;
+    //measured currents for wheels
+    int16_t curr_BL = 0;
+    int16_t curr_BR = 0;
+    int16_t curr_FL = 0;
+    int16_t curr_FR = 0;
+    //measured accelerations for wheels
+    int16_t acc_BL = 0;
+    int16_t acc_BR = 0;
+    int16_t acc_FL = 0;
+    int16_t acc_FR = 0;
     //goal positions for neck and grabbers
     int16_t pos_N = 0;
     int16_t pos_GL = 0;
@@ -243,15 +349,17 @@ void MecanumbotCore::run() {
     size_t bytesRead = Serial.readBytes((char*)&controlData, controlDataSize);
     if (bytesRead == controlDataSize)
     {
+      //Sensor data from wheels
+      read_WheelSensorData(sensorData);
       // Simple processing of control packet
       set_WheelVelocities(controlData.vel_BL, controlData.vel_BR, controlData.vel_FL, controlData.vel_FR);
       set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
 
       // Mirror control into sensorData for host visibility
-      sensorData.vel_BL = controlData.vel_BL;
-      sensorData.vel_BR = controlData.vel_BR;
-      sensorData.vel_FL = controlData.vel_FL;
-      sensorData.vel_FR = controlData.vel_FR;
+      sensorData.cmd_vel_BL = controlData.vel_BL;
+      sensorData.cmd_vel_BR = controlData.vel_BR;
+      sensorData.cmd_vel_FL = controlData.vel_FL;
+      sensorData.cmd_vel_FR = controlData.vel_FR;
       sensorData.pos_N = controlData.pos_N;
       sensorData.pos_GL = controlData.pos_GL;
       sensorData.pos_GR = controlData.pos_GR;
