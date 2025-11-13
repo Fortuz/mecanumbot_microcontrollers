@@ -9,7 +9,75 @@ dynamixel::GroupSyncWrite *groupSyncWriteAX = nullptr;
 
 //Declaration for sensors
 static MecanumbotSensor sensors;
+// Sensor data structure, "should" contains every information that the ROS2 host needs
+struct __attribute__((packed)) SensorData {
+    //goal velocities for wheels  
+    int16_t cmd_vel_BL = 0;
+    int16_t cmd_vel_BR = 0;
+    int16_t cmd_vel_FL = 0;
+    int16_t cmd_vel_FR = 0;
+    //measured velocities for wheels
+    int16_t vel_BL = 0;
+    int16_t vel_BR = 0;
+    int16_t vel_FL = 0;
+    int16_t vel_FR = 0;
+    //measured positions for wheels
+    int16_t pos_BL = 0;
+    int16_t pos_BR = 0;
+    int16_t pos_FL = 0;
+    int16_t pos_FR = 0;
+    //measured currents for wheels
+    int16_t curr_BL = 0;
+    int16_t curr_BR = 0;
+    int16_t curr_FL = 0;
+    int16_t curr_FR = 0;
+    //measured accelerations for wheels
+    int16_t acc_BL = 0;
+    int16_t acc_BR = 0;
+    int16_t acc_FL = 0;
+    int16_t acc_FR = 0;
+    //goal positions for neck and grabbers
+    int16_t pos_N = 0;
+    int16_t pos_GL = 0;
+    int16_t pos_GR = 0;
+    //sensory data
+    float voltage = 0.0;
+    //IMU data
+    float imu_angular_vel_x = 0.0;
+    float imu_angular_vel_y = 0.0;
+    float imu_angular_vel_z = 0.0;
+    float imu_linear_acc_x = 0.0;
+    float imu_linear_acc_y = 0.0;
+    float imu_linear_acc_z = 0.0;
+    float imu_magnetic_x = 0.0;
+    float imu_magnetic_y = 0.0;
+    float imu_magnetic_z = 0.0;
+    float orientation_w = 0.0;
+    float orientation_x = 0.0;
+    float orientation_y = 0.0;
+    float orientation_z = 0.0;
+};
+// Control data structure, "should" contains every command that the ROS2 host can send
+struct __attribute__((packed)) ControlData {
+  //goal velocities for wheels  
+  int16_t vel_BL = 0;
+  int16_t vel_BR = 0;
+  int16_t vel_FL = 0;
+  int16_t vel_FR = 0;
+  //goal positions for neck and grabbers
+  int16_t pos_N = 0;
+  int16_t pos_GL = 0;
+  int16_t pos_GR = 0;
+};
 
+// Packet format sent to host: magic(2) + seq(1) + payload(SensorData) + crc(1)
+struct __attribute__((packed)) SensorPacket {
+  uint16_t magic;
+  uint8_t seq;
+  SensorData payload;
+  uint8_t crc;
+};
+// ---------------------------------------- Helpers for Dynamixel operations ----------------------------------------
 void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA) { 
   uint8_t dxl_error;
 
@@ -213,7 +281,7 @@ void initDXLConnection() {
     }
 }
 
-//--- MecanumbotCore class methods ---
+//--------------------------------- MecanumbotCore class methods -------------------------------------------
 
 // The setup method, initialises everything
 void MecanumbotCore::begin() {
@@ -239,59 +307,12 @@ void MecanumbotCore::begin() {
     delay(1000);
 
     // After a while insanely fucking irritating
-    //sensors.makeMelody(6);  // Play Für Elise
+    sensors.makeMelody(7);  //Black Parade
+    // Black Parade - weird 
 
     // Wait a second for everything to settle
+    delay(1000);
 }
-
-// Sensor data structure, "should" contains every information that the ROS2 host needs
-struct __attribute__((packed)) SensorData {
-    //goal velocities for wheels  
-    int16_t cmd_vel_BL = 0;
-    int16_t cmd_vel_BR = 0;
-    int16_t cmd_vel_FL = 0;
-    int16_t cmd_vel_FR = 0;
-    //measured velocities for wheels
-    int16_t vel_BL = 0;
-    int16_t vel_BR = 0;
-    int16_t vel_FL = 0;
-    int16_t vel_FR = 0;
-    //measured positions for wheels
-    int16_t pos_BL = 0;
-    int16_t pos_BR = 0;
-    int16_t pos_FL = 0;
-    int16_t pos_FR = 0;
-    //measured currents for wheels
-    int16_t curr_BL = 0;
-    int16_t curr_BR = 0;
-    int16_t curr_FL = 0;
-    int16_t curr_FR = 0;
-    //measured accelerations for wheels
-    int16_t acc_BL = 0;
-    int16_t acc_BR = 0;
-    int16_t acc_FL = 0;
-    int16_t acc_FR = 0;
-    //goal positions for neck and grabbers
-    int16_t pos_N = 0;
-    int16_t pos_GL = 0;
-    int16_t pos_GR = 0;
-    //sensory data
-    float voltage = 0.0;
-    //IMU data
-    float imu_angular_vel_x = 0.0;
-    float imu_angular_vel_y = 0.0;
-    float imu_angular_vel_z = 0.0;
-    float imu_linear_acc_x = 0.0;
-    float imu_linear_acc_y = 0.0;
-    float imu_linear_acc_z = 0.0;
-    float imu_magnetic_x = 0.0;
-    float imu_magnetic_y = 0.0;
-    float imu_magnetic_z = 0.0;
-    float orientation_w = 0.0;
-    float orientation_x = 0.0;
-    float orientation_y = 0.0;
-    float orientation_z = 0.0;
-};
 
 SensorData sensorData;
 
@@ -312,27 +333,7 @@ static uint8_t crc8_ccitt(const uint8_t *data, size_t len)
   return crc;
 }
 
-// Packet format sent to host: magic(2) + seq(1) + payload(SensorData) + crc(1)
-struct __attribute__((packed)) SensorPacket {
-  uint16_t magic;
-  uint8_t seq;
-  SensorData payload;
-  uint8_t crc;
-};
-
 static uint8_t sensor_seq_counter = 0;
-
-struct __attribute__((packed)) ControlData {
-  //goal velocities for wheels  
-  int16_t vel_BL = 0;
-  int16_t vel_BR = 0;
-  int16_t vel_FL = 0;
-  int16_t vel_FR = 0;
-  //goal positions for neck and grabbers
-  int16_t pos_N = 0;
-  int16_t pos_GL = 0;
-  int16_t pos_GR = 0;
-};
 
 ControlData controlData;
 
@@ -393,10 +394,13 @@ void MecanumbotCore::run() {
     sensorData.orientation_z = tmp[3];
 
   // Send sensor packet with magic, sequence and CRC so the host can reliably resync
-  SensorPacket pkt;
-  pkt.magic = 0xAA55; // Magic number, very low probability of occurring randomly
+  // Build packet
+  SensorPacket pkt; 
+  pkt.magic = 0xAA55; //low probility start bytes
   pkt.seq = sensor_seq_counter++;
   pkt.payload = sensorData;
   pkt.crc = crc8_ccitt((const uint8_t*)&pkt, sizeof(pkt) - 1);
+
+  // Send pure binary packet only
   Serial.write((const uint8_t*)&pkt, sizeof(pkt));
 }
