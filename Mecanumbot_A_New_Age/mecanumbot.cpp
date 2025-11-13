@@ -261,6 +261,7 @@ void initializeMotors() {
     initializeXMMotors(ID_WHEEL_FL);
     initializeXMMotors(ID_WHEEL_FR);
 
+    writeByte(packetHandlerAX, ID_NECK, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
     writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
     writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
 }
@@ -280,62 +281,83 @@ void initDXLConnection() {
         return;
     }
 }
+//--------------------------------- Helpers ---------------------------------
+void enableXMMotorsTorque(bool enable) {
+    uint8_t param[1] = { enable ? TORQUE_ENABLE : TORQUE_DISABLE };
+    groupSyncWriteXM->addParam(ID_WHEEL_BL, param);
+    groupSyncWriteXM->addParam(ID_WHEEL_BR, param);
+    groupSyncWriteXM->addParam(ID_WHEEL_FL, param);
+    groupSyncWriteXM->addParam(ID_WHEEL_FR, param);
+    int result = groupSyncWriteXM->txPacket();
+    if (result != COMM_SUCCESS) {
+        Serial.print("XM Torque enable failed: ");
+        Serial.println(packetHandlerXM->getTxRxResult(result));
+    }
+    groupSyncWriteXM->clearParam();
+}
 
-//--------------------------------- MecanumbotCore class methods -------------------------------------------
-
-// The setup method, initialises everything
+void enableAXMotorsTorque(bool enable) {
+    uint16_t torque_val = enable ? TORQUE_ENABLE : TORQUE_DISABLE;
+    writeByte(packetHandlerAX, ID_NECK, AX_ADDR_TORQUE_ENABLE, torque_val);
+    writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_TORQUE_ENABLE, torque_val);
+    writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_TORQUE_ENABLE, torque_val);
+}
+// CRC8 (poly 0x07) for packet integrity 
+static uint8_t crc8_ccitt(const uint8_t *data, size_t len) { 
+  //crc bit 
+  uint8_t crc = 0x00;
+  while (len--) { 
+    crc ^= *data++; 
+    for (uint8_t i = 0; i < 8; ++i) {
+       if (crc & 0x80) crc = (uint8_t)((crc << 1) ^ 0x07);
+        else crc <<= 1; 
+      } 
+    }
+    return crc; 
+    }
+//--------------------------------- Begin -----------------------------------
 void MecanumbotCore::begin() {
 
+    Serial.begin(57600);
+    delay(500); // Allow Serial to stabilize
+
+    Serial.println("Initializing Mecanumbot...");
+
+    // Initialize Dynamixel handlers
     portHandler       = dynamixel::PortHandler::getPortHandler(DEVICENAME);
     packetHandlerAX   = dynamixel::PacketHandler::getPacketHandler(AX_PROTOCOL_VERSION);
     packetHandlerXM   = dynamixel::PacketHandler::getPacketHandler(XM_PROTOCOL_VERSION);
     groupSyncWriteXM  = new dynamixel::GroupSyncWrite(portHandler, packetHandlerXM, XM_ADDR_GOAL_VELOCITY, XM_LEN_GOAL_VELOCITY);
-    // 2 is probably the length of the AX goal position
     groupSyncWriteAX  = new dynamixel::GroupSyncWrite(portHandler, packetHandlerAX, AX_ADDR_GOAL_POSITION, 2);
 
+    // Open port and set baudrate
+    initDXLConnection();
+    delay(200); // Allow bus to stabilize
 
-    initDXLConnection();    
+    // Initialize motors
+    initializeMotors();   // Sets velocity mode for XM motors
+    enableXMMotorsTorque(true);
+    enableAXMotorsTorque(true);
 
-    // Test the motors
-    initializeMotors();
+    Serial.println("Motors initialized and torque enabled.");
 
     // Initialize sensors
     sensors.init();
-
     sensors.initIMU();
     sensors.calibrationGyro();
-    delay(1000);
+    delay(500);
 
-    // After a while insanely fucking irritating
-    sensors.makeMelody(7);  //Black Parade
-    // Black Parade - weird 
+    // Play startup melody
+    sensors.makeMelody(7);  // Black Parade
+    Serial.println("Startup melody played.");
 
-    // Wait a second for everything to settle
-    delay(1000);
-}
-
-SensorData sensorData;
-
-// CRC8 (poly 0x07) for packet integrity
-static uint8_t crc8_ccitt(const uint8_t *data, size_t len)
-{
-  //crc bit
-  uint8_t crc = 0x00;
-  while (len--) {
-    crc ^= *data++;
-    for (uint8_t i = 0; i < 8; ++i) {
-      if (crc & 0x80)
-        crc = (uint8_t)((crc << 1) ^ 0x07);
-      else
-        crc <<= 1;
-    }
-  }
-  return crc;
+    delay(200); // Small delay to avoid race conditions with motors
 }
 
 static uint8_t sensor_seq_counter = 0;
 
 ControlData controlData;
+SensorData sensorData;
 
 const int controlDataSize = sizeof(ControlData);
 

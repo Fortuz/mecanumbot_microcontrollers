@@ -188,7 +188,7 @@ void MecanumbotSensor::makeMelody(uint8_t index)
       melody_note_[8] = NOTE_A3;   melody_duration_[8] = 8;
       break;
     case BLACK_PARADE:
-      melody_note_[0] = NOTE_G4;   melody_duration_[0] = 8
+      melody_note_[0] = NOTE_G4;   melody_duration_[0] = 8;
       melody_note_[1] = NOTE_F4_SHARP;   melody_duration_[1] = 4;
       melody_note_[2] = NOTE_B4;   melody_duration_[2] = 4;
       melody_note_[3] = NOTE_E4;   melody_duration_[3] = 8;
