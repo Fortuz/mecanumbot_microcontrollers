@@ -55,6 +55,7 @@ class MecanumbotSensor
   LedPinArray led_pin_array_; 
 
   bool is_melody_play_complete_;
+  uint16_t melody_length_;
   uint16_t melody_note_[8];
   uint8_t melody_duration_[8];
 };

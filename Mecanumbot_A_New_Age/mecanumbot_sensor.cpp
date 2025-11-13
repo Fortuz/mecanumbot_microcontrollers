@@ -158,6 +158,7 @@ void MecanumbotSensor::makeMelody(uint8_t index)
   const uint16_t NOTE_D4_SHARP = 311;
   const uint16_t NOTE_E4 = 330;
   const uint16_t NOTE_F4 = 349;
+  const uint16_t NOTE_F4_SHARP = 370;
   const uint16_t NOTE_G4 = 392;
   const uint16_t NOTE_A4 = 440;
   const uint16_t NOTE_B4 = 494;
@@ -171,6 +172,7 @@ void MecanumbotSensor::makeMelody(uint8_t index)
   const uint8_t BUTTON1     = 4;
   const uint8_t BUTTON2     = 5;
   const uint8_t FUR_ELISE   = 6;
+  const uint8_t BLACK_PARADE  = 7;
 
   switch (index)
   {
@@ -185,6 +187,19 @@ void MecanumbotSensor::makeMelody(uint8_t index)
       melody_note_[7] = NOTE_C4;   melody_duration_[7] = 4;
       melody_note_[8] = NOTE_A3;   melody_duration_[8] = 8;
       break;
+    case BLACK_PARADE:
+      melody_note_[0] = NOTE_G4;   melody_duration_[0] = 8
+      melody_note_[1] = NOTE_F4_SHARP;   melody_duration_[1] = 4;
+      melody_note_[2] = NOTE_B4;   melody_duration_[2] = 4;
+      melody_note_[3] = NOTE_E4;   melody_duration_[3] = 8;
+      melody_note_[4] = NOTE_D4;   melody_duration_[4] = 4;
+      melody_note_[5] = NOTE_G4;   melody_duration_[5] = 4;
+      melody_note_[6] = NOTE_C4;   melody_duration_[6] = 8;
+      melody_note_[7] = NOTE_B3;   melody_duration_[7] = 4;
+      //melody_note_[8] = NOTE_E4;   melody_duration_[8] = 4;
+      //melody_note_[9] = NOTE_A3;   melody_duration_[9] = 8;
+      //melody_note_[10] = NOTE_D4;   melody_duration_[10] = 4;
+      break;  
     case ON:
       melody_note_[0] = NOTE_C4;   melody_duration_[0] = 4;
       melody_note_[1] = NOTE_D4;   melody_duration_[1] = 4;
