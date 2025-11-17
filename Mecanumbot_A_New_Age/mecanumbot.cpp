@@ -109,6 +109,7 @@ void initializeMotors() {
 
     writeByte(packetHandlerAX, ID_GRABBER_R, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
     writeByte(packetHandlerAX, ID_GRABBER_L, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
+    writeByte(packetHandlerAX, ID_NECK, AX_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
 }
 
 void initDXLConnection() {
