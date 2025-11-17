@@ -161,11 +161,31 @@ void MecanumbotCore::begin() {
 
 // Sensor data structure, "should" contains every information that the ROS2 host needs
 struct __attribute__((packed)) SensorData {
+    //command velocity
+    int16_t cmd_vel_BL = 0;
+    int16_t cmd_vel_BR = 0;
+    int16_t cmd_vel_FL = 0;
+    int16_t cmd_vel_FR = 0;
     //goal velocities for wheels  
     int16_t vel_BL = 0;
     int16_t vel_BR = 0;
     int16_t vel_FL = 0;
     int16_t vel_FR = 0;
+    //positions for wheels
+    int16_t pos_BL = 0;
+    int16_t pos_BR = 0;
+    int16_t pos_FL = 0;
+    int16_t pos_FR = 0; 
+    //present currents for wheels
+    int16_t curr_BL = 0;
+    int16_t curr_BR = 0;
+    int16_t curr_FL = 0;
+    int16_t curr_FR = 0;
+    //accelerations for wheels
+    int16_t acc_BL = 0;
+    int16_t acc_BR = 0;
+    int16_t acc_FL = 0;
+    int16_t acc_FR = 0;
     //goal positions for neck and grabbers
     int16_t pos_N = 0;
     int16_t pos_GL = 0;
@@ -249,10 +269,10 @@ void MecanumbotCore::run() {
       set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
 
       // Mirror control into sensorData for host visibility
-      sensorData.vel_BL = controlData.vel_BL;
-      sensorData.vel_BR = controlData.vel_BR;
-      sensorData.vel_FL = controlData.vel_FL;
-      sensorData.vel_FR = controlData.vel_FR;
+      sensorData.cmd_vel_BL = controlData.vel_BL;
+      sensorData.cmd_vel_BR = controlData.vel_BR;
+      sensorData.cmd_vel_FL = controlData.vel_FL;
+      sensorData.cmd_vel_FR = controlData.vel_FR;
       sensorData.pos_N = controlData.pos_N;
       sensorData.pos_GL = controlData.pos_GL;
       sensorData.pos_GR = controlData.pos_GR;
@@ -264,6 +284,30 @@ void MecanumbotCore::run() {
     }
   }
     sensorData.voltage = sensors.checkVoltage();
+
+    // Add the present velocity
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_VELOCITY, (uint32_t*)&sensorData.vel_BL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_VELOCITY, (uint32_t*)&sensorData.vel_BR, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_VELOCITY, (uint32_t*)&sensorData.vel_FL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY, (uint32_t*)&sensorData.vel_FR, nullptr);
+
+    //positions for wheels
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_POSITION, (uint32_t*)&sensorData.pos_BL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_POSITION, (uint32_t*)&sensorData.pos_BR, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_POSITION, (uint32_t*)&sensorData.pos_FL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION, (uint32_t*)&sensorData.pos_FR, nullptr);
+
+    //present currents for wheels
+    packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BL, nullptr);
+    packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BR, nullptr);
+    packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FL, nullptr);
+    packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FR, nullptr);
+
+    //accelerations for wheels
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BR, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FL, nullptr);
+    packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FR, nullptr);
 
     float* tmp;
     // IMU data --> sensorData
