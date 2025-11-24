@@ -1,4 +1,4 @@
-# This file contains the documentaton of the low level Mecanumbot microcontroller, Mecanumbot - A new age
+# This file contains the documentaton of the low level Mecanumbot microcontroller, Mecanumbot - OpenCR
 
 ## mecanumbot.ino
 
