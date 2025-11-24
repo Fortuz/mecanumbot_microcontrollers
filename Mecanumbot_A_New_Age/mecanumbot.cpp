@@ -65,9 +65,9 @@ struct __attribute__((packed)) ControlData {
   int16_t vel_FL = 0;
   int16_t vel_FR = 0;
   //goal positions for neck and grabbers
-  int16_t pos_N = 0;
-  int16_t pos_GL = 0;
-  int16_t pos_GR = 0;
+  int16_t pos_N = NECK_MAX_POSITION_VALUE;
+  int16_t pos_GL = GRABBER_FRONT_POSITION_VALUE;
+  int16_t pos_GR = GRABBER_FRONT_POSITION_VALUE;
 };
 
 // Packet format sent to host: magic(2) + seq(1) + payload(SensorData) + crc(1)
@@ -316,10 +316,18 @@ static uint8_t crc8_ccitt(const uint8_t *data, size_t len) {
     return crc; 
     }
 //--------------------------------- Begin -----------------------------------
+static uint8_t sensor_seq_counter = 0;
+
+ControlData controlData;
+SensorData sensorData;
+
+const int controlDataSize = sizeof(ControlData);
+
+
 void MecanumbotCore::begin() {
 
     Serial.begin(57600);
-    delay(500); // Allow Serial to stabilize
+    //delay(500); // Allow Serial to stabilize
 
     Serial.println("Initializing Mecanumbot...");
 
@@ -351,15 +359,11 @@ void MecanumbotCore::begin() {
     sensors.makeMelody(7);  // Black Parade
     Serial.println("Startup melody played.");
 
-    delay(200); // Small delay to avoid race conditions with motors
+    delay(100); // Small delay to avoid race conditions with motors
+    set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
 }
 
-static uint8_t sensor_seq_counter = 0;
-
-ControlData controlData;
-SensorData sensorData;
-
-const int controlDataSize = sizeof(ControlData);
+//--------------------------------- Run -----------------------------------
 
 void MecanumbotCore::run() {
     //Serial.println(portHandler->getPortName());
@@ -373,11 +377,10 @@ void MecanumbotCore::run() {
     if (bytesRead == controlDataSize)
     {
       //Sensor data from wheels
-      read_WheelSensorData(sensorData);
       // Simple processing of control packet
       set_WheelVelocities(controlData.vel_BL, controlData.vel_BR, controlData.vel_FL, controlData.vel_FR);
       set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
-
+      
       // Mirror control into sensorData for host visibility
       sensorData.cmd_vel_BL = controlData.vel_BL;
       sensorData.cmd_vel_BR = controlData.vel_BR;
@@ -393,9 +396,55 @@ void MecanumbotCore::run() {
       while (Serial.available()) Serial.read();
     }
   }
-    sensorData.voltage = sensors.checkVoltage();
+  sensorData.voltage = sensors.checkVoltage();
+  
+  //read_WheelSensorData(sensorData);
+  uint32_t vel_BL, vel_BR, vel_FL, vel_FR;
+  // id 1 address 128 length 4
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_VELOCITY,&vel_BL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_VELOCITY,&vel_BR, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_VELOCITY,&vel_FL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY,&vel_FR, nullptr);
 
-    float* tmp;
+  sensorData.vel_BL = static_cast<int16_t>(vel_BL);
+  sensorData.vel_BR = static_cast<int16_t>(vel_BR);
+  sensorData.vel_FL = static_cast<int16_t>(vel_FL);
+  sensorData.vel_FR = static_cast<int16_t>(vel_FR);
+
+
+  uint32_t pos_BL, pos_BR, pos_FL, pos_FR;
+  // id 1 address 132 length 4
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_POSITION,&pos_BL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_POSITION,&pos_BR, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_POSITION,&pos_FL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION,&pos_FR, nullptr);
+  sensorData.pos_BL = static_cast<int16_t>(pos_BL);
+  sensorData.pos_BR = static_cast<int16_t>(pos_BR);
+  sensorData.pos_FL = static_cast<int16_t>(pos_FL);
+  sensorData.pos_FR = static_cast<int16_t>(pos_FR);
+  uint16_t curr_BL, curr_BR, curr_FL, curr_FR;
+  // id 1 address 126 length 2
+  packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_CURRENT,&curr_BL, nullptr);
+  packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_CURRENT,&curr_BR, nullptr);
+  packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_CURRENT,&curr_FL, nullptr);
+  packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_CURRENT,&curr_FR, nullptr);
+  sensorData.curr_BL = static_cast<int16_t>(curr_BL);
+  sensorData.curr_BR = static_cast<int16_t>(curr_BR);
+  sensorData.curr_FL = static_cast<int16_t>(curr_FL);
+  sensorData.curr_FR = static_cast<int16_t>(curr_FR);
+
+  uint32_t acc_BL, acc_BR, acc_FL, acc_FR;
+  // id 1 address 108 length 4
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION,&acc_BL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION,&acc_BR, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION,&acc_FL, nullptr);
+  packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION,&acc_FR, nullptr);
+  sensorData.acc_BL = static_cast<int16_t>(acc_BL);
+  sensorData.acc_BR = static_cast<int16_t>(acc_BR);
+  sensorData.acc_FL = static_cast<int16_t>(acc_FL);
+  sensorData.acc_FR = static_cast<int16_t>(acc_FR);
+  //dxl_comm_result = packetHandler->read4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_POSITION, (uint32_t*)&dxl_present_position, &dxl_error);
+  float* tmp;
     // IMU data --> sensorData
     tmp = sensors.getImuAngularVelocity(); //static float angular_vel[3];
     sensorData.imu_angular_vel_x = tmp[0];

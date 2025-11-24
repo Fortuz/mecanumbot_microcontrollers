@@ -109,6 +109,7 @@ float MecanumbotSensor::checkVoltage(void)
   float vol_value;
   
   vol_value = getPowerInVoltage();
+  
 
   return vol_value;
 }

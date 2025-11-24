@@ -46,7 +46,6 @@
 #define GRABBER_MIN_POSITION_VALUE   160
 #define GRABBER_FRONT_POSITION_VALUE 512  
 #define GRABBER_MAX_POSITION_VALUE   854    
-
 // XM430-W210-T motor parameteres (Wheels) - Velocity control
 // https://emanual.robotis.com/docs/en/dxl/x/xm430-w210/
 
