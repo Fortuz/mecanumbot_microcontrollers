@@ -154,12 +154,14 @@ void MecanumbotSensor::makeMelody(uint8_t index)
   const uint16_t NOTE_A3 = 220;
   const uint16_t NOTE_B3 = 246;
   const uint16_t NOTE_C4 = 262;
+  const uint16_t NOTE_D4_FLAT = 277;
   const uint16_t NOTE_D4 = 294;
   const uint16_t NOTE_D4_SHARP = 311;
   const uint16_t NOTE_E4 = 330;
   const uint16_t NOTE_F4 = 349;
   const uint16_t NOTE_G4 = 392;
   const uint16_t NOTE_A4 = 440;
+  const uint16_t NOTE_B4_FLAT = 466;
   const uint16_t NOTE_B4 = 494;
   const uint16_t NOTE_C5 = 523;
   //const uint16_t NOTE_C6 = 1047;
@@ -171,6 +173,7 @@ void MecanumbotSensor::makeMelody(uint8_t index)
   const uint8_t BUTTON1     = 4;
   const uint8_t BUTTON2     = 5;
   const uint8_t FUR_ELISE   = 6;
+  const uint8_t SMOKE_ON_THE_WATER = 7;
 
   switch (index)
   {
@@ -185,6 +188,17 @@ void MecanumbotSensor::makeMelody(uint8_t index)
       melody_note_[7] = NOTE_C4;   melody_duration_[7] = 4;
       melody_note_[8] = NOTE_A3;   melody_duration_[8] = 8;
       break;
+    
+    case SMOKE_ON_THE_WATER:
+      melody_note_[0] = NOTE_G4;   melody_duration_[0] = 4;
+      melody_note_[1] = NOTE_B4_FLAT;   melody_duration_[1] = 4;
+      melody_note_[2] = NOTE_C4;   melody_duration_[2] = 4;
+      melody_note_[3] = NOTE_G4;   melody_duration_[3] = 4;
+      melody_note_[4] = NOTE_B4_FLAT;   melody_duration_[4] = 4;
+      melody_note_[5] = NOTE_D4_FLAT;   melody_duration_[5] = 4;
+      melody_note_[6] = NOTE_C4;   melody_duration_[6] = 8;
+      break;
+
     case ON:
       melody_note_[0] = NOTE_C4;   melody_duration_[0] = 4;
       melody_note_[1] = NOTE_D4;   melody_duration_[1] = 4;
