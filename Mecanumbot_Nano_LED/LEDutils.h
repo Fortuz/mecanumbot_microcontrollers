@@ -11,8 +11,8 @@
 #define BATCH_LEDS 8
 
 // Indexes for LED groups
-#define INDEX_BL  0
-#define INDEX_BR  8
+#define INDEX_BR  0
+#define INDEX_BL  8
 #define INDEX_FR  16
 #define INDEX_FL  24
 
