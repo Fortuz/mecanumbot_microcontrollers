@@ -127,8 +127,16 @@ void initDXLConnection() {
 }
 
 void MecanumbotCore::begin() {
-    Serial.begin(1000000); 
+    Serial.begin(1000000);
+    pinMode(BDPIN_GPIO_17, OUTPUT); 
+    pinMode(BDPIN_GPIO_13, OUTPUT);
+    pinMode(BDPIN_GPIO_9, OUTPUT);
+    pinMode(BDPIN_GPIO_5, OUTPUT);
 
+    digitalWrite(BDPIN_GPIO_17, LOW); //GND to 0
+    digitalWrite(BDPIN_GPIO_13, LOW); //CMD received
+    digitalWrite(BDPIN_GPIO_9, LOW); //XM motor write
+    digitalWrite(BDPIN_GPIO_5, LOW); //AX motor write
 
     portHandler       = dynamixel::PortHandler::getPortHandler(DEVICENAME);
     packetHandlerAX   = dynamixel::PacketHandler::getPacketHandler(AX_PROTOCOL_VERSION);
@@ -189,6 +197,11 @@ struct __attribute__((packed)) SensorData {
     int16_t pos_N = 0;
     int16_t pos_GL = 0;
     int16_t pos_GR = 0;
+    // error messages from wheels
+    int16_t err_BL = 0;
+    int16_t err_BR = 0;
+    int16_t err_FL = 0;
+    int16_t err_FR = 0;
     //sensory data
     float voltage = 0.0;
     //IMU data
@@ -277,8 +290,11 @@ void MecanumbotCore::run() {
 
     if (received_new_cmd) {
         // Only apply the VERY LAST command processed in the while loop
+        digitalWrite(BDPIN_GPIO_13, HIGH); //CMD received
         set_WheelVelocities(controlData.vel_BL, controlData.vel_BR, controlData.vel_FL, controlData.vel_FR);
+        digitalWrite(BDPIN_GPIO_9, HIGH); //XM motor write
         set_AXPositions(controlData.pos_N, controlData.pos_GL, controlData.pos_GR);
+        digitalWrite(BDPIN_GPIO_5, HIGH); //AX motor write
         
         // Update sensor reflection
         sensorData.cmd_vel_BL = controlData.vel_BL;
@@ -288,14 +304,12 @@ void MecanumbotCore::run() {
         sensorData.pos_N = controlData.pos_N;
         sensorData.pos_GL = controlData.pos_GL;
         sensorData.pos_GR = controlData.pos_GR;
-    }
+        delay(100);
+        digitalWrite(BDPIN_GPIO_13, LOW); //CMD received, pin
+        digitalWrite(BDPIN_GPIO_9, LOW); //XM motor write
+        digitalWrite(BDPIN_GPIO_5, LOW); //AX motor write
 
-    // SAFETY TIMEOUT: If no data from Pi for 200ms, STOP ROBOT
-    if (millis() - last_command_time > 200) {
-        set_WheelVelocities(0, 0, 0, 0);
     }
-    // ------------------------------------------
-
     sensorData.voltage = sensors.checkVoltage();
 
     // 1. Send Sync Read Command for Velocity
@@ -310,7 +324,6 @@ void MecanumbotCore::run() {
         if (groupSyncReadVel->isAvailable(ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY, 4))
             sensorData.vel_FR = (int32_t)groupSyncReadVel->getData(ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY, 4);
     }
-
     // 2. Repeat for Position with Safety Checks
     dxl_comm_result = groupSyncReadPos->txRxPacket();
     if (dxl_comm_result == COMM_SUCCESS) {
@@ -323,8 +336,7 @@ void MecanumbotCore::run() {
         if (groupSyncReadPos->isAvailable(ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION, 4))
             sensorData.pos_FR = (int32_t)groupSyncReadPos->getData(ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION, 4);
     }
-
-    if (loop_count % 20 == 0) {
+ if (loop_count % 20 == 0) {
       //present currents for wheels
       packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BL, nullptr);
       packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BR, nullptr);
@@ -336,6 +348,11 @@ void MecanumbotCore::run() {
       packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BR, nullptr);
       packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FL, nullptr);
       packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FR, nullptr); 
+
+      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BL, nullptr);
+      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BR, nullptr);
+      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_FL, nullptr);
+      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_FR, nullptr); 
     }
 
     float* tmp;

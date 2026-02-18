@@ -9,6 +9,7 @@
 #define BAUDRATE                 1000000
 #define VOLTAGE_PIN              16                 // ADC0 on OpenCR
 
+
 #define TORQUE_ENABLE            1
 #define TORQUE_DISABLE           0
 
@@ -53,6 +54,7 @@
 #define XM_ADDR_OPERATING_MODE      11  // RW 
 #define XM_ADDR_VELOCITY_LIMIT      44  // RW 
 #define XM_ADDR_TORQUE_ENABLE       64  // RW
+#define XM_ADDR_ERROR_STATUS        70 //R
 #define XM_ADDR_GOAL_VELOCITY       104 // RW
 #define XM_ADDR_PROFILE_ACCELERATION 108 // RW
 #define XM_ADDR_PRESENT_CURRENT     126 // R
