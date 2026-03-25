@@ -169,6 +169,18 @@ void colorSolid( CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette)
   fill_solid(ledarray, numleds, newcolor);
 }
 
+void colorBlink(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int blinkHalfPeriodMs)
+{
+  bool ledOn = ((millis() / blinkHalfPeriodMs) % 2) == 0;
+
+  if (ledOn) {
+    CRGB newcolor = ColorFromPalette(palette, 0, BRIGHTNESS);
+    fill_solid(ledarray, numleds, newcolor);
+  } else {
+    fill_solid(ledarray, numleds, CRGB::Black);
+  }
+}
+
 void setLedBatch(CRGB* ledarray, int index, int mode, int color)
 {
   if (mode == MODE_WAVE_RIGHT){
@@ -179,6 +191,10 @@ void setLedBatch(CRGB* ledarray, int index, int mode, int color)
     colorPulse(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
   } else if (mode == MODE_SOLID) {
     colorSolid(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
+  } else if (mode == MODE_FAST_BLINK) {
+    colorBlink(ledarray+index, BATCH_LEDS, gGradientPalettes[color], 300);
+  } else if (mode == MODE_SLOW_BLINK) {
+    colorBlink(ledarray+index, BATCH_LEDS, gGradientPalettes[color], 900);
   }
 }
 
@@ -240,7 +256,7 @@ DEFINE_GRADIENT_PALETTE(pink_gp) {
   255, 157,  3,112};
 
 // Array of palette pointers
-const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
+const TProgmemRGBGradientPaletteRef gGradientPalettes[] = {
   black_gp,
   white_gp,
   green_gp,
@@ -250,7 +266,7 @@ const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
   pink_gp,
   yellow_gp};
 
-const uint8_t gGradientPaletteCount = sizeof( gGradientPalettes) / sizeof( TProgmemRGBGradientPalettePtr );
+const uint8_t gGradientPaletteCount = sizeof( gGradientPalettes) / sizeof( TProgmemRGBGradientPaletteRef );
 
   /*
 // =======================================================================================

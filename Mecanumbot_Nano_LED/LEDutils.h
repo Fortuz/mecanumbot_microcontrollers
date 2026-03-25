@@ -34,15 +34,18 @@
 #define MODE_WAVE_LEFT   2
 #define MODE_PULSE       3
 #define MODE_SOLID       4
+#define MODE_FAST_BLINK  5
+# define MODE_SLOW_BLINK 6
 
 void colorSolid(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette);
 void colorPulse(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette);
 void colorWaveCus(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int direction);
 void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int direction);
+void colorBlink(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int blinkHalfPeriodMs);
 
 void setLedBatch(CRGB* ledarray, int index, int mode, int color);
 
-extern const TProgmemRGBGradientPalettePtr gGradientPalettes[];
+extern const TProgmemRGBGradientPaletteRef gGradientPalettes[];
 extern const uint8_t gGradientPaletteCount;
 
 #endif
