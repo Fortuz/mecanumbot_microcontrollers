@@ -76,23 +76,26 @@ String assembly - Every mode and every color is 2 character with the following s
 
 [Mode_FL, Color_FL, Mode_FR, Color_FR,, Mode_BR, Color_BR, Mode_BL, Color_BL] 
 
-| Modes | Value |
-|:--- |:---:|
-| WAVE_RIGHT | 01 |
-| WAVE_LEFT  | 02 |
-| PULSE      | 03 |
-| SOLID      | 04 |
+| Mode         | Value |
+| ------------ | ----- |
+| `WAVE_RIGHT` | `1`   |
+| `WAVE_LEFT`  | `2`   |
+| `PULSE`      | `3`   |
+| `SOLID`      | `4`   |
+| `FAST_BLINK` | `5`   |
+| `SLOW_BLINK` | `6`   |
 
-| Colors | Value |
-|:--- |:---:|
-| BLACK   | 01 |
-| WHITE   | 01 |
-| GREEN   | 02 |
-| RED     | 03 |
-| BLUE    | 04 |
-| CYAN    | 05 |
-| PINK    | 06 |
-| YELLOW | 07 |
+| Color    | Value |
+| -------- | ----- |
+| `BLACK`  | `0`   |
+| `WHITE`  | `1`   |
+| `GREEN`  | `2`   |
+| `RED`    | `3`   |
+| `BLUE`   | `4`   |
+| `CYAN`   | `5`   |
+| `PINK`   | `6`   |
+| `YELLOW` | `7`   |
+
 
 ### OpenCR_Core
 
