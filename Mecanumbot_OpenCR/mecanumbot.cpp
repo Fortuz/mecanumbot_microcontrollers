@@ -29,7 +29,12 @@ void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t 
 
 void set_WheelVelocities(int32_t vBL, int32_t vBR, int32_t vFL, int32_t vFR) {
   uint8_t param_goal_velocity_BL[4] = {
-    DXL_LOBYTE(DXL_LOWORD(vBL)),
+    DXL_LOBYTE(DXL_LOWORD(vBL)),//accelerations for wheels
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BL, nullptr);
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BR, nullptr);
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FL, nullptr);
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FR, nullptr); 
+
     DXL_HIBYTE(DXL_LOWORD(vBL)),
     DXL_LOBYTE(DXL_HIWORD(vBL)),
     DXL_HIBYTE(DXL_HIWORD(vBL))
@@ -373,11 +378,16 @@ void MecanumbotCore::run() {
       packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FL, nullptr);
       packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FR, nullptr);
 
-      //accelerations for wheels
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BL, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BR, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FL, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FR, nullptr); 
+      uint32_t temp_buffer = 0;
+
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
+      sensorData.acc_BL = (int16_t)temp_buffer;
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
+      sensorData.acc_BR = (int16_t)temp_buffer;
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
+      sensorData.acc_FL = (int16_t)temp_buffer;
+      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr); 
+      sensorData.acc_FR = (int16_t)temp_buffer;
 
       packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BL, nullptr);
       packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BR, nullptr);
