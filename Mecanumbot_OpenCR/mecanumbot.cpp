@@ -13,6 +13,8 @@ dynamixel::GroupSyncRead *groupSyncReadPos = nullptr;
 
 static MecanumbotSensor sensors;
 
+const int TRIG = 2, ECHO = 3;
+
 void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA) {
   uint8_t dxl_error;
   int dxl_comm_result = handler->write2ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
@@ -126,8 +128,31 @@ void initDXLConnection() {
     }
 }
 
+float ReadUSSensor() {
+    digitalWrite(TRIG, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG, LOW);
+    
+    // 25000 microsecond timeout (~400cm max range)
+    unsigned long duration = pulseIn(ECHO, HIGH, 25000); 
+    
+    // If pulseIn times out, it returns 0. Handle this gracefully.
+    if (duration == 0) {
+        return -1.0; // Or return 400.0, depending on how your ROS2 stack handles out-of-range data
+    }
+    
+    float distance = duration * 0.034 / 2.0;
+    return distance;
+}
+
 void MecanumbotCore::begin() {
     Serial.begin(1000000);
+
+    pinMode(TRIG, OUTPUT);
+    pinMode(ECHO, INPUT);
+
     pinMode(BDPIN_GPIO_17, OUTPUT); 
     pinMode(BDPIN_GPIO_13, OUTPUT);
     pinMode(BDPIN_GPIO_9, OUTPUT);
@@ -202,6 +227,8 @@ struct __attribute__((packed)) SensorData {
     int16_t err_BR = 0;
     int16_t err_FL = 0;
     int16_t err_FR = 0;
+    // distance data from DMS 
+    float dms = 0.0;
     //sensory data
     float voltage = 0.0;
     //IMU data
@@ -218,6 +245,7 @@ struct __attribute__((packed)) SensorData {
     float orientation_x = 0.0;
     float orientation_y = 0.0;
     float orientation_z = 0.0;
+    
 };
 
 SensorData sensorData;
@@ -304,12 +332,14 @@ void MecanumbotCore::run() {
         sensorData.pos_N = controlData.pos_N;
         sensorData.pos_GL = controlData.pos_GL;
         sensorData.pos_GR = controlData.pos_GR;
+       
         delay(100);
         digitalWrite(BDPIN_GPIO_13, LOW); //CMD received, pin
         digitalWrite(BDPIN_GPIO_9, LOW); //XM motor write
         digitalWrite(BDPIN_GPIO_5, LOW); //AX motor write
 
     }
+    sensorData.dms = ReadUSSensor();
     sensorData.voltage = sensors.checkVoltage();
 
     // 1. Send Sync Read Command for Velocity
