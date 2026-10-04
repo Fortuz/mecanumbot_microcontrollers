@@ -17,6 +17,7 @@ The robot can be controlled with the RC100 controller.
 - **OpenCR_Core_ROS2** : Intermittent state between the Core and the final microcontroller. Implements two dynamixel slaves for the two types of motors. <br>
 - **turtlebot3_mecanumbot**: Modified version of the original Turtlebot3 microcontroller code to accomodate the Mecanumbot extended functionality (Not tested yet) <br>
 - **OpenCR_Core_ROS2_Fixed_Timing**: Implements a fixed window in which the AX and XM writes are executed. A modified version of the original Turtlebot3 microcontroller accomodating Mecanumbot functionality
+- **Mecanumbot_OpenCR_Stepper**: Variant of Mecanumbot_OpenCR in which the four XM wheel motors are replaced by NEMA17 steppers on TMC2209 drivers (STEP/DIR). The AX neck and grabber motors and the host serial protocol are unchanged. See its own README for wiring and bring-up. <br>
 
 ## Requirements
 Dynamixel Workbench (Windows only) <br>

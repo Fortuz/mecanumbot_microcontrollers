@@ -1,7 +1,11 @@
 #include "LEDutils.h"
 
 
-void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int direction)
+// `fill` pixels at one end of the strip take their color from `fillPalette`
+// instead of `palette`; the brightness wave runs over both unbroken, so the
+// strip still reads as one wave with a bar of another color inside it.
+void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, int direction,
+                  const CRGBPalette16& fillPalette, uint8_t fill, bool fillFromLast)
 {
   static uint16_t sPseudotime = 0;
   static uint16_t sLastMillis = 0;
@@ -40,10 +44,6 @@ void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette
     uint8_t bri8 = ((uint32_t)bri16 * brightdepth) >> 16;
     bri8 += (255 - brightdepth);
 
-    // Palette index and color fetch
-    uint8_t index = scale8(hue8, 240);
-    CRGB newcolor = ColorFromPalette(palette, index, bri8, LINEARBLEND);
-
     uint16_t pixelnumber = 0;
     // LED reversed (left wave)
     if (direction == LEFT){
@@ -51,6 +51,11 @@ void colorWaveFix(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette
     } else if (direction == RIGHT) {
       pixelnumber = i;
     }
+
+    // Palette index and color fetch
+    uint8_t index = scale8(hue8, 240);
+    bool filled = fillFromLast ? (pixelnumber + fill >= numleds) : (pixelnumber < fill);
+    CRGB newcolor = ColorFromPalette(filled ? fillPalette : palette, index, bri8, LINEARBLEND);
     nblend(ledarray[pixelnumber], newcolor, 128);
   }
 }
@@ -181,20 +186,48 @@ void colorBlink(CRGB* ledarray, uint16_t numleds, const CRGBPalette16& palette, 
   }
 }
 
+static void setLedRange(CRGB* ledarray, uint16_t numleds, int mode, int color)
+{
+  if (numleds == 0) return;
+  if (mode == MODE_PULSE) {
+    colorPulse(ledarray, numleds, gGradientPalettes[color]);
+  } else if (mode == MODE_SOLID) {
+    colorSolid(ledarray, numleds, gGradientPalettes[color]);
+  } else if (mode == MODE_FAST_BLINK) {
+    colorBlink(ledarray, numleds, gGradientPalettes[color], 300);
+  } else if (mode == MODE_SLOW_BLINK) {
+    colorBlink(ledarray, numleds, gGradientPalettes[color], 900);
+  }
+}
+
 void setLedBatch(CRGB* ledarray, int index, int mode, int color)
 {
-  if (mode == MODE_WAVE_RIGHT){
-    colorWaveFix(ledarray+index, BATCH_LEDS, gGradientPalettes[color],  RIGHT);
-  } else if (mode == MODE_WAVE_LEFT){
-    colorWaveFix(ledarray+index, BATCH_LEDS, gGradientPalettes[color],  LEFT);
-  } else if (mode == MODE_PULSE) {
-    colorPulse(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
-  } else if (mode == MODE_SOLID) {
-    colorSolid(ledarray+index, BATCH_LEDS, gGradientPalettes[color]);
-  } else if (mode == MODE_FAST_BLINK) {
-    colorBlink(ledarray+index, BATCH_LEDS, gGradientPalettes[color], 300);
-  } else if (mode == MODE_SLOW_BLINK) {
-    colorBlink(ledarray+index, BATCH_LEDS, gGradientPalettes[color], 900);
+  setLedBatch(ledarray, index, mode, color, 0, color, false);
+}
+
+// One panel in its mode and color, with `fill` of its LEDs in `fillColor`.
+void setLedBatch(CRGB* ledarray, int index, int mode, int color,
+                 uint8_t fill, int fillColor, bool fillFromLast)
+{
+  if (fill > BATCH_LEDS) fill = BATCH_LEDS;
+  CRGB* panel = ledarray + index;
+
+  if (mode == MODE_WAVE_RIGHT || mode == MODE_WAVE_LEFT) {
+    colorWaveFix(panel, BATCH_LEDS, gGradientPalettes[color],
+                 mode == MODE_WAVE_RIGHT ? RIGHT : LEFT,
+                 gGradientPalettes[fillColor], fill, fillFromLast);
+    return;
+  }
+
+  // The other modes are uniform over the LEDs they are given, so the two
+  // parts of the panel are simply drawn one after the other.
+  uint8_t rest = BATCH_LEDS - fill;
+  if (fillFromLast) {
+    setLedRange(panel, rest, mode, color);
+    setLedRange(panel + rest, fill, mode, fillColor);
+  } else {
+    setLedRange(panel, fill, mode, fillColor);
+    setLedRange(panel + fill, rest, mode, color);
   }
 }
 

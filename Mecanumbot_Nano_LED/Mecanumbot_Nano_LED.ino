@@ -13,6 +13,10 @@ CRGB leds[NUM_LEDS];
 
 int led_settings[8] = {MODE_WAVE_RIGHT, CYAN_GP, MODE_WAVE_LEFT, CYAN_GP, MODE_PULSE, PINK_GP, MODE_PULSE, PINK_GP};
 int LED_SETTINGS_COUNT = 8;
+// Progress fill, the same on all four panels: LEDs per panel shown in the
+// progress color (0 = none), and that color.
+byte led_progress = 0;
+byte led_progress_color = BLACK_GP;
 int new_sets[8]; 
 String output = "";
 
@@ -65,11 +69,22 @@ void handleIncoming() {
       byte BR_mode = buf[7];
       byte BR_color = buf[8];
 
-      byte tL = buf[9];
-      byte tH = buf[10];
+      // Bytes 9 and 10 used to carry a duration that was never read. They are
+      // now the progress fill and its color.
+      byte progress = buf[9];
+      byte progress_color = buf[10];
 
       byte cs = buf[11];
-      if ((FL_mode ^ FL_color ^ FR_mode ^ FR_color ^ BL_mode ^ BL_color ^ BR_mode ^ BR_color ^ tL ^ tH) == cs) {
+      if ((FL_mode ^ FL_color ^ FR_mode ^ FR_color ^ BL_mode ^ BL_color ^ BR_mode ^ BR_color ^ progress ^ progress_color) == cs) {
+
+        // A sender that predates the fill still puts its duration here (1000 ms
+        // is 0xE8, 0x03): anything that is not a valid fill means "no fill".
+        if (progress > PROGRESS_MAX || progress_color >= gGradientPaletteCount) {
+          progress = 0;
+          progress_color = BLACK_GP;
+        }
+        led_progress = progress;
+        led_progress_color = progress_color;
 
         // Update led_settings from packet
         led_settings[0] = FL_mode;
@@ -120,9 +135,9 @@ void updateLEDFlashes()
   
   lastUpdate = millis();
   // Set Led modes and colors
-  setLedBatch(leds, INDEX_FL, led_settings[0], led_settings[1]);
-  setLedBatch(leds, INDEX_FR, led_settings[2], led_settings[3]);
-  setLedBatch(leds, INDEX_BL, led_settings[4], led_settings[5]);
-  setLedBatch(leds, INDEX_BR, led_settings[6], led_settings[7]);
+  setLedBatch(leds, INDEX_FL, led_settings[0], led_settings[1], led_progress, led_progress_color, FILL_FROM_LAST_FL);
+  setLedBatch(leds, INDEX_FR, led_settings[2], led_settings[3], led_progress, led_progress_color, FILL_FROM_LAST_FR);
+  setLedBatch(leds, INDEX_BL, led_settings[4], led_settings[5], led_progress, led_progress_color, FILL_FROM_LAST_BL);
+  setLedBatch(leds, INDEX_BR, led_settings[6], led_settings[7], led_progress, led_progress_color, FILL_FROM_LAST_BR);
   FastLED.show();
 }

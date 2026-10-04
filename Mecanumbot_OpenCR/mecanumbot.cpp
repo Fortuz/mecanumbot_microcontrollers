@@ -27,14 +27,21 @@ void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t 
   }
 }
 
+void writeDword(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint32_t DATA) {
+  uint8_t dxl_error;
+  int dxl_comm_result = handler->write4ByteTxRx(portHandler, ID, ADDRESS, DATA, &dxl_error);
+  if (dxl_comm_result != COMM_SUCCESS) {
+    Serial.print("COMM Error: ");
+    Serial.println(handler->getTxRxResult(dxl_comm_result));
+  } else if (dxl_error != 0) {
+    Serial.print("Error Code: ");
+    Serial.println(handler->getRxPacketError(dxl_error));
+  }
+}
+
 void set_WheelVelocities(int32_t vBL, int32_t vBR, int32_t vFL, int32_t vFR) {
   uint8_t param_goal_velocity_BL[4] = {
-    DXL_LOBYTE(DXL_LOWORD(vBL)),//accelerations for wheels
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BL, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_BR, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FL, nullptr);
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, (uint32_t*)&sensorData.acc_FR, nullptr); 
-
+    DXL_LOBYTE(DXL_LOWORD(vBL)),
     DXL_HIBYTE(DXL_LOWORD(vBL)),
     DXL_LOBYTE(DXL_HIWORD(vBL)),
     DXL_HIBYTE(DXL_HIWORD(vBL))
@@ -102,6 +109,9 @@ void set_AXPositions(int32_t pN, int32_t pGL, int32_t pGR) {
 void initializeXMMotors(int ID) {
     writeByte(packetHandlerXM, ID, XM_ADDR_TORQUE_ENABLE, TORQUE_DISABLE);
     writeByte(packetHandlerXM, ID, XM_ADDR_OPERATING_MODE, XM_VELOCITY_MODE);
+    // Ramp instead of step. This is RAM and defaults back to 0 on every power
+    // cycle, so it belongs here rather than in a one-off Wizard session.
+    writeDword(packetHandlerXM, ID, XM_ADDR_PROFILE_ACCELERATION, XM_PROFILE_ACCELERATION_VALUE);
     writeByte(packetHandlerXM, ID, XM_ADDR_TORQUE_ENABLE, TORQUE_ENABLE);
 }
 
@@ -255,6 +265,17 @@ struct __attribute__((packed)) SensorData {
 
 SensorData sensorData;
 
+// err_* sentinel for "this wheel did not answer". Hardware Error Status is a
+// byte, so no real error code can collide with a negative value.
+#define DXL_UNREADABLE (-1)
+
+static void markWheelsUnreadable() {
+  sensorData.err_BL = DXL_UNREADABLE;
+  sensorData.err_BR = DXL_UNREADABLE;
+  sensorData.err_FL = DXL_UNREADABLE;
+  sensorData.err_FR = DXL_UNREADABLE;
+}
+
 // CRC8 (poly 0x07) for packet integrity
 static uint8_t crc8_ccitt(const uint8_t *data, size_t len){
   //crc bit
@@ -347,6 +368,16 @@ void MecanumbotCore::run() {
     sensorData.dms = ReadUSSensor();
     sensorData.voltage = sensors.checkVoltage();
 
+    // A failed read means the value is UNKNOWN, not unchanged. Holding the last
+    // good sample and shipping it as live telemetry is what makes a silent
+    // Dynamixel bus look like a control fault: the cmd_vel_* echo above keeps
+    // tracking the host while every read-back freezes, so the two disagree and
+    // nothing says why. Every read below therefore reports its own failure.
+    //
+    // GroupSyncRead::rxPacket() fails as a whole if any one registered ID stays
+    // silent, so the four wheels are flagged together -- that is the
+    // granularity a sync read gives us, not a choice made here.
+
     // 1. Send Sync Read Command for Velocity
     int dxl_comm_result = groupSyncReadVel->txRxPacket();
     if (dxl_comm_result == COMM_SUCCESS) {
@@ -358,6 +389,16 @@ void MecanumbotCore::run() {
             sensorData.vel_FL = (int32_t)groupSyncReadVel->getData(ID_WHEEL_FL, XM_ADDR_PRESENT_VELOCITY, 4);
         if (groupSyncReadVel->isAvailable(ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY, 4))
             sensorData.vel_FR = (int32_t)groupSyncReadVel->getData(ID_WHEEL_FR, XM_ADDR_PRESENT_VELOCITY, 4);
+    } else {
+        // Wheel velocity is integrated into odometry on the host. A frozen
+        // non-zero sample fabricates motion for as long as the bus stays down,
+        // so this is the one field zeroed rather than held: unknown speed is
+        // reported as no speed, and err_* carries the reason.
+        sensorData.vel_BL = 0;
+        sensorData.vel_BR = 0;
+        sensorData.vel_FL = 0;
+        sensorData.vel_FR = 0;
+        markWheelsUnreadable();
     }
     // 2. Repeat for Position with Safety Checks
     dxl_comm_result = groupSyncReadPos->txRxPacket();
@@ -370,29 +411,51 @@ void MecanumbotCore::run() {
             sensorData.pos_FL = (int32_t)groupSyncReadPos->getData(ID_WHEEL_FL, XM_ADDR_PRESENT_POSITION, 4);
         if (groupSyncReadPos->isAvailable(ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION, 4))
             sensorData.pos_FR = (int32_t)groupSyncReadPos->getData(ID_WHEEL_FR, XM_ADDR_PRESENT_POSITION, 4);
+    } else {
+        // Position is absolute, so a held sample is a smaller lie than a jump
+        // to zero would be. It is left alone and flagged instead.
+        markWheelsUnreadable();
     }
- if (loop_count % 20 == 0) {
-      //present currents for wheels
-      packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BL, nullptr);
-      packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_BR, nullptr);
-      packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FL, nullptr);
-      packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_CURRENT, (uint16_t*)&sensorData.curr_FR, nullptr);
+    if (loop_count % 20 == 0) {
+      // One motor at a time here, so each read carries its own result and is
+      // checked on its own. Current and acceleration keep their last good
+      // sample on failure; err_* below is what says the sample is old.
+      uint16_t curr_buffer = 0;
+
+      if (packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PRESENT_CURRENT, &curr_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.curr_BL = (int16_t)curr_buffer;
+      if (packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PRESENT_CURRENT, &curr_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.curr_BR = (int16_t)curr_buffer;
+      if (packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PRESENT_CURRENT, &curr_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.curr_FL = (int16_t)curr_buffer;
+      if (packetHandlerXM->read2ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PRESENT_CURRENT, &curr_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.curr_FR = (int16_t)curr_buffer;
 
       uint32_t temp_buffer = 0;
 
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
-      sensorData.acc_BL = (int16_t)temp_buffer;
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
-      sensorData.acc_BR = (int16_t)temp_buffer;
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr);
-      sensorData.acc_FL = (int16_t)temp_buffer;
-      packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr); 
-      sensorData.acc_FR = (int16_t)temp_buffer;
+      if (packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.acc_BL = (int16_t)temp_buffer;
+      if (packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.acc_BR = (int16_t)temp_buffer;
+      if (packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.acc_FL = (int16_t)temp_buffer;
+      if (packetHandlerXM->read4ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_PROFILE_ACCELERATION, &temp_buffer, nullptr) == COMM_SUCCESS)
+          sensorData.acc_FR = (int16_t)temp_buffer;
 
-      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BL, nullptr);
-      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_BR, nullptr);
-      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_FL, nullptr);
-      packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_ERROR_STATUS, (uint8_t*)&sensorData.err_FR, nullptr); 
+      // Read through a byte of its own and assigned whole: Hardware Error
+      // Status is one byte and err_* is two, so writing it in place would leave
+      // the high byte of the previous value -- and the previous value is now
+      // sometimes DXL_UNREADABLE.
+      uint8_t err_buffer = 0;
+
+      sensorData.err_BL = (packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BL, XM_ADDR_ERROR_STATUS, &err_buffer, nullptr) == COMM_SUCCESS)
+          ? (int16_t)err_buffer : (int16_t)DXL_UNREADABLE;
+      sensorData.err_BR = (packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_BR, XM_ADDR_ERROR_STATUS, &err_buffer, nullptr) == COMM_SUCCESS)
+          ? (int16_t)err_buffer : (int16_t)DXL_UNREADABLE;
+      sensorData.err_FL = (packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FL, XM_ADDR_ERROR_STATUS, &err_buffer, nullptr) == COMM_SUCCESS)
+          ? (int16_t)err_buffer : (int16_t)DXL_UNREADABLE;
+      sensorData.err_FR = (packetHandlerXM->read1ByteTxRx(portHandler, ID_WHEEL_FR, XM_ADDR_ERROR_STATUS, &err_buffer, nullptr) == COMM_SUCCESS)
+          ? (int16_t)err_buffer : (int16_t)DXL_UNREADABLE;
     }
 
     float* tmp;

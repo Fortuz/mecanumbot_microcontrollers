@@ -322,5 +322,28 @@ Serial.write((const uint8_t*)&pkt, sizeof(pkt));
 ```
 * Create the sensor packet with the magic byte and checksum, and write it onto the serial
 
+### What a failed Dynamixel read reports
+
+`cmd_vel_*` in the sensor packet is the host's command echoed straight back, not a
+read from the bus, and a Dynamixel SyncWrite is never acknowledged -- so the wheels
+obeying `cmd_vel` says nothing about whether the bus is answering. Only the reads
+prove that.
+
+Every read therefore reports its own failure instead of silently keeping the last
+good sample:
+
+* `err_*` is set to **-1** (`DXL_UNREADABLE`) for all four wheels when a read fails.
+  Hardware Error Status is a byte, so no real error code can collide with it. This is
+  the one flag that says "`vel_*`, `pos_*`, `curr_*` and `acc_*` are stale".
+* `vel_*` is **zeroed** on a failed velocity read. It is the only field integrated
+  into odometry on the host, so a frozen non-zero sample would fabricate motion for
+  as long as the bus stayed down. Unknown speed is reported as no speed.
+* `pos_*`, `curr_*` and `acc_*` keep their last value -- for an absolute position a
+  held sample is a smaller lie than a jump to zero -- and are flagged by `err_*`.
+
+`GroupSyncRead::rxPacket()` fails as a whole if any one registered ID stays silent,
+so the four wheels are always flagged together. That is the granularity a sync read
+gives, not a choice made here.
+
 # Mecanumbot sensors
 A skimmed version of the original turtlebot sensor state, with redundant parts removed

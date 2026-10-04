@@ -71,6 +71,19 @@
 
 #define XM_VELOCITY_MODE            1
 
+// Velocity-profile acceleration for the wheels, in the XM430's 214.577 rev/min^2
+// units. Profile Acceleration is RAM, so it has to be written at every boot: a
+// value set once with Dynamixel Wizard does not survive a power cycle, which is
+// why the wheels were running at 0. Zero does not mean "gentle", it means NO
+// acceleration limit -- every cmd_vel change is a step command and all four
+// wheels slam to the new speed as hard as the coils allow.
+//
+// 20 ~= 4300 rev/min^2 ~= a 1 s ramp from rest to the +-300 ticks the host
+// clamps at. Deliberately conservative: four wheels stepping at once is what
+// loads the supply hardest, and this robot has been browning out. Raise it for
+// a snappier robot, at the cost of a bigger inrush.
+#define XM_PROFILE_ACCELERATION_VALUE 20
+
 
 namespace MecanumbotCore {
   void begin();
