@@ -213,8 +213,13 @@ void setLedBatch(CRGB* ledarray, int index, int mode, int color,
   CRGB* panel = ledarray + index;
 
   if (mode == MODE_WAVE_RIGHT || mode == MODE_WAVE_LEFT) {
+    bool reversed = (index == INDEX_FL && WAVE_REVERSED_FL) ||
+                    (index == INDEX_FR && WAVE_REVERSED_FR) ||
+                    (index == INDEX_BL && WAVE_REVERSED_BL) ||
+                    (index == INDEX_BR && WAVE_REVERSED_BR);
+    bool right = (mode == MODE_WAVE_RIGHT) != reversed;
     colorWaveFix(panel, BATCH_LEDS, gGradientPalettes[color],
-                 mode == MODE_WAVE_RIGHT ? RIGHT : LEFT,
+                 right ? RIGHT : LEFT,
                  gGradientPalettes[fillColor], fill, fillFromLast);
     return;
   }

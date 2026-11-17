@@ -1,4 +1,6 @@
 #include "mecanumbot.h"
+#include <Wire.h>
+#include <VL53L0X.h>   // "VL53L0X" by Pololu (Arduino Library Manager)
 
 dynamixel::PortHandler *portHandler       = nullptr;
 dynamixel::PacketHandler *packetHandlerAX = nullptr;
@@ -13,7 +15,26 @@ dynamixel::GroupSyncRead *groupSyncReadPos = nullptr;
 
 static MecanumbotSensor sensors;
 
-const int TRIG = 2, ECHO = 3;
+// --- DMS: VL53L0X time-of-flight distance sensor on the OpenCR I2C header ---
+// Replaces the HC-SR04 that was on TRIG 2 / ECHO 3 (those pins are now free).
+// Wiring: VIN -> 3.3V, GND -> GND, SDA -> SDA, SCL -> SCL (Arduino header).
+// Use a breakout with its own regulator; the bare chip is 2.6-3.5 V only.
+//
+// sensorData.dms keeps the HC-SR04 contract so the packet and the host side
+// are unchanged: distance in cm, -1.0 when there is no valid reading
+// (out of range, I2C error, or no fresh sample), -2.0 while the sensor is
+// not initialised.
+static VL53L0X tof;
+static bool tof_ok = false;
+static float tof_last_cm = -1.0f;
+static uint32_t tof_last_sample_ms = 0;
+
+// The chip reports ~8190/8191 mm when nothing is in range, 65535 on a timeout.
+static const uint16_t TOF_INVALID_MM = 8190;
+// If no new sample arrives within this window the value is stale, not live.
+// Continuous back-to-back mode with the default 33 ms timing budget delivers
+// one sample every ~33 ms.
+static const uint32_t TOF_STALE_MS = 200;
 
 void writeByte(dynamixel::PacketHandler* handler, int ID, int ADDRESS, uint16_t DATA) {
   uint8_t dxl_error;
@@ -143,30 +164,78 @@ void initDXLConnection() {
     }
 }
 
-float ReadUSSensor() {
-    digitalWrite(TRIG, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIG, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG, LOW);
-    
-    // 25000 microsecond timeout (~400cm max range)
-    unsigned long duration = pulseIn(ECHO, HIGH, 25000); 
-    
-    // If pulseIn times out, it returns 0. Handle this gracefully.
-    if (duration == 0) {
-        return -1.0; // Or return 400.0, depending on how your ROS2 stack handles out-of-range data
+// dms value while the sensor is not initialised (not found / init failed),
+// so it can be told apart from -1 "no target in range" in the telemetry.
+static const float TOF_NOT_READY = -2.0f;
+static const uint32_t TOF_RETRY_MS = 1000;
+static uint32_t tof_last_init_attempt_ms = 0;
+
+static bool tryInitDMSSensor() {
+    tof_last_init_attempt_ms = millis();
+    // 100 kHz: the OpenCR core's 400 kHz timing value is unverified
+    // ("BUGBUG" in its Wire.cpp), and 100 kHz is what the diagnostic
+    // sketch confirmed working.
+    tof.setTimeout(500);
+    if (!tof.init()) {
+        tof_ok = false;
+        return false;
     }
-    
-    float distance = duration * 0.034 / 2.0;
-    return distance;
+    // Back-to-back continuous ranging: the chip measures on its own and
+    // ReadDMSSensor() only collects finished samples, so the loop never
+    // waits for a measurement (the HC-SR04's pulseIn blocked up to 25 ms).
+    tof.startContinuous(0);
+    tof_ok = true;
+    tof_last_sample_ms = millis();
+    return true;
+}
+
+static void initDMSSensor() {
+    Wire.begin();
+    Wire.setClock(100000);
+    if (!tryInitDMSSensor()) {
+        Serial.println("VL53L0X not found on I2C, dms reads -2, retrying every 1 s");
+    }
+}
+
+// Non-blocking: returns the newest sample in cm, -1.0 if invalid/stale,
+// -2.0 if the sensor is not initialised (init is retried once a second).
+float ReadDMSSensor() {
+    if (!tof_ok) {
+        if (millis() - tof_last_init_attempt_ms > TOF_RETRY_MS) {
+            tryInitDMSSensor();
+        }
+        if (!tof_ok) {
+            return TOF_NOT_READY;
+        }
+    }
+
+    uint8_t int_status = tof.readReg(VL53L0X::RESULT_INTERRUPT_STATUS);
+    if (tof.last_status != 0) {
+        // I2C failure: the value is unknown, not unchanged.
+        tof_last_cm = -1.0f;
+        return tof_last_cm;
+    }
+
+    if ((int_status & 0x07) != 0) {
+        // A new measurement is ready.
+        uint16_t mm = tof.readReg16Bit(VL53L0X::RESULT_RANGE_STATUS + 10);
+        tof.writeReg(VL53L0X::SYSTEM_INTERRUPT_CLEAR, 0x01);
+        if (tof.last_status != 0 || mm == 0 || mm >= TOF_INVALID_MM) {
+            tof_last_cm = -1.0f;
+        } else {
+            tof_last_cm = mm / 10.0f;
+        }
+        tof_last_sample_ms = millis();
+    } else if (millis() - tof_last_sample_ms > TOF_STALE_MS) {
+        // Sensor stopped producing samples: do not ship an old value as live.
+        tof_last_cm = -1.0f;
+    }
+
+    return tof_last_cm;
 }
 
 void MecanumbotCore::begin() {
     Serial.begin(1000000);
-
-    pinMode(TRIG, OUTPUT);
-    pinMode(ECHO, INPUT);
 
     pinMode(BDPIN_GPIO_17, OUTPUT); 
     pinMode(BDPIN_GPIO_13, OUTPUT);
@@ -202,6 +271,7 @@ void MecanumbotCore::begin() {
     sensors.init();
     sensors.initIMU();
     sensors.calibrationGyro();
+    initDMSSensor();
     delay(1000);
     sensors.makeMelody(7); // SMOKE_ON_THE_WATER
 }
@@ -242,7 +312,7 @@ struct __attribute__((packed)) SensorData {
     int16_t err_BR = 0;
     int16_t err_FL = 0;
     int16_t err_FR = 0;
-    // distance data from DMS 
+    // distance data from DMS (VL53L0X), cm; -1 = no valid reading, -2 = sensor not initialised
     float dms = 0.0;
     //sensory data
     float voltage = 0.0;
@@ -365,7 +435,7 @@ void MecanumbotCore::run() {
         digitalWrite(BDPIN_GPIO_5, LOW); //AX motor write
 
     }
-    sensorData.dms = ReadUSSensor();
+    sensorData.dms = ReadDMSSensor();
     sensorData.voltage = sensors.checkVoltage();
 
     // A failed read means the value is UNKNOWN, not unchanged. Holding the last
